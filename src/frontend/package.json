@@ -12,6 +12,7 @@
     "prepare": "npm run gen-api"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.90.21",
     "axios": "^1.13.5",
     "lucide-react": "^0.468.0",
     "orval": "^7.13.2",

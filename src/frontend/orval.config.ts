@@ -5,7 +5,8 @@ export default defineConfig({
         input: './schema.yaml',
         output: {
             target: './src/api',
-            baseUrl: 'https://localhost:8000'
+            baseUrl: 'http://localhost:8000',
+            client: 'react-query'
         }
     },
 });

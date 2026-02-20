@@ -29,4 +29,4 @@ class RecipeSerializer(serializers.ModelSerializer[models.Recipe]):
 
     class Meta:  # type: ignore
         model = models.Recipe
-        fields = ("id", "name", "ingredients_list")
+        fields = "__all__"
