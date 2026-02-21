@@ -1,8 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import type { Ingredient, OnHandIngredient } from "../api/mealmodeAPI";
 import { Card } from "./ui/card";
-import { ChevronsRight, CircleAlert, MoveRight } from "lucide-react";
-import { Button } from "./ui/button";
+import { ChevronsRight, CircleAlert } from "lucide-react";
 
 
 export function IngredientCard({ ingredient }: { ingredient: Ingredient }) {
@@ -11,7 +10,16 @@ export function IngredientCard({ ingredient }: { ingredient: Ingredient }) {
 
     return (<Card
         key={ingredient.id}
+        role="button"
+        tabIndex={0}
         className="transition-all p-4 cursor-pointer hover:bg-palette-lightblue/90 hover:shadow-md"
+        onClick={() => navigate(`/ingredient/${ingredient.id}`)}
+        onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                navigate(`/ingredient/${ingredient.id}`);
+            }
+        }}
     >
         <div className="flex items-center justify-between">
             <div>
@@ -32,9 +40,9 @@ export function IngredientCard({ ingredient }: { ingredient: Ingredient }) {
                         {ingredient.on_hand.notes && ` (${ingredient.on_hand.notes})`}
                     </p>
                 )}
-                <Button variant="ghost" onClick={() => navigate(`/ingredient/${ingredient.id}`)}>
+                <span className="text-palette-mist shrink-0" aria-hidden>
                     <ChevronsRight size={16} />
-                </Button>
+                </span>
             </div>
         </div>
     </Card>
