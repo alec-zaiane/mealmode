@@ -1,10 +1,11 @@
 import { BrowserRouter, Routes, Route, NavLink, Outlet } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
+import { MealPlanPage } from './pages/MealPlanPage';
 import { MealListPage } from './pages/MealListPage';
 import { MealDetailPage } from './pages/MealDetailPage';
 import { IngredientPage } from './pages/IngredientPage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { UtensilsCrossed } from 'lucide-react';
+import { UtensilsCrossed, Calendar } from 'lucide-react';
 
 function Layout() {
   return (
@@ -20,6 +21,15 @@ function Layout() {
             >
               <UtensilsCrossed className="w-5 h-5" />
               Meals
+            </NavLink>
+            <NavLink
+              to="/plan"
+              className={({ isActive }) =>
+                `flex items-center gap-2 text-sm font-medium ${isActive ? 'text-palette-terracotta' : 'text-palette-slate hover:text-palette-taupe'}`
+              }
+            >
+              <Calendar className="w-5 h-5" />
+              Meal Plan
             </NavLink>
           </div>
         </div>
@@ -43,6 +53,7 @@ export default function App() {
               <Route index element={<MealListPage />} />
               <Route path="meal/:id" element={<MealDetailPage />} />
               <Route path="ingredient/:id" element={<IngredientPage />} />
+              <Route path="plan" element={<MealPlanPage />} />
             </Route>
           </Routes>
         </AppProvider>

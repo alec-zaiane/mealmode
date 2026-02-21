@@ -24,6 +24,15 @@ class RecipeIngredientSerializer(serializers.ModelSerializer[models.RecipeIngred
         fields = ("id", "ingredient", "quantity")
 
 
+class RecipeIngredientWriteSerializer(serializers.Serializer):
+    """For create/update: list of {ingredient: id, quantity}."""
+
+    ingredient = serializers.PrimaryKeyRelatedField(
+        queryset=models.Ingredient.objects.all()
+    )
+    quantity = serializers.FloatField(min_value=0)
+
+
 class TagSerializer(serializers.ModelSerializer[models.RecipeTag]):
     class Meta:  # type: ignore
         model = models.RecipeTag
@@ -38,9 +47,24 @@ class RecipeStepSerializer(serializers.ModelSerializer[models.RecipeStep]):
 
 class RecipeSerializer(serializers.ModelSerializer[models.Recipe]):
     ingredients_list = RecipeIngredientSerializer(many=True, read_only=True)
+    recipe_ingredients = RecipeIngredientWriteSerializer(
+        many=True, required=False, write_only=True
+    )
     tags = TagSerializer(many=True, read_only=True)
     steps = RecipeStepSerializer(many=True, read_only=True)
 
     class Meta:  # type: ignore
         model = models.Recipe
         fields = "__all__"
+
+    def create(self, validated_data: dict):
+        recipe_ingredients = validated_data.pop("recipe_ingredients", [])
+        validated_data.pop("ingredients", None)  # M2M through RecipeIngredient; set below
+        recipe = models.Recipe.objects.create(**validated_data)
+        for item in recipe_ingredients:
+            models.RecipeIngredient.objects.create(
+                recipe=recipe,
+                ingredient=item["ingredient"],
+                quantity=item["quantity"],
+            )
+        return recipe
