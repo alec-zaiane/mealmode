@@ -189,7 +189,7 @@ export function MealDetailPage() {
                 <div className="flex items-center gap-2 cursor-pointer justify-content">
                   <CardTitle>Nutrition</CardTitle>
                   <Button variant="outline" size="sm" className="ml-auto">
-                    {showNutritionLabel ? 'Summary' : 'Label'}
+                    {showNutritionLabel ? 'See Summary' : 'See Label'}
                   </Button>
                 </div>
               </CardHeader>
@@ -243,8 +243,8 @@ export function MealDetailPage() {
             <CardContent>
               {recipe.steps.length ? (
                 <ol className="list-decimal list-inside space-y-2">
-                  {recipe.steps.map((step, index) => (
-                    <li key={index} className="text-sm text-palette-slate">
+                  {recipe.steps.map((step) => (
+                    <li key={step.step_number} className="text-sm text-palette-slate">
                       {step.description}
                     </li>
                   ))}
