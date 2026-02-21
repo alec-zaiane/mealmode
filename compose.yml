@@ -1,4 +1,14 @@
 services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mealmode
+      POSTGRES_USER: mealmode
+      POSTGRES_PASSWORD: INSECURE_PASSWORD
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   backend:
     build:
       context: .
@@ -6,6 +16,14 @@ services:
     restart: unless-stopped
     expose:
       - "8000"
+    environment:
+      USE_POSTGRES: "true"
+      DB_HOST: db
+      DB_NAME: mealmode
+      DB_USER: mealmode
+      DB_PASSWORD: INSECURE_PASSWORD
+    depends_on:
+      - db
 
   frontend:
     build:
@@ -24,3 +42,4 @@ services:
 volumes:
   caddy_data:
   caddy_config:
+  postgres_data:

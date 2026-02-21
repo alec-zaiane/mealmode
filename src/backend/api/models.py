@@ -92,7 +92,7 @@ class NutritionStats(models.Model):
 
 
 class Ingredient(models.Model):
-    name: models.CharField[str, str] = models.CharField(max_length=100)
+    name: models.CharField[str, str] = models.CharField(max_length=256)
     lowest_cost: NullableFloatField = models.FloatField(
         null=True,
         blank=True,
