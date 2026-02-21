@@ -72,6 +72,11 @@ export const BaseUnitEnum = {
   pc: 'pc',
 } as const;
 
+/**
+ * @nullable
+ */
+export type IngredientOnHand = OnHandIngredient | null;
+
 export interface Ingredient {
   readonly id: number;
   /** @maxLength 100 */
@@ -82,6 +87,8 @@ export interface Ingredient {
    * @nullable
    */
   lowest_cost?: number | null;
+  /** @nullable */
+  readonly on_hand: IngredientOnHand;
 }
 
 export interface NutritionStats {
@@ -168,6 +175,7 @@ export interface NutritionStats {
 
 export interface OnHandIngredient {
   readonly id: number;
+  ingredient: number;
   /**
    * Quantity of the ingredient currently on hand
    * @nullable
@@ -185,7 +193,6 @@ export interface OnHandIngredient {
   warning_quantity?: number | null;
   /** Optional notes about the ingredient on hand */
   notes?: string;
-  ingredient: number;
 }
 
 export interface PaginatedIngredientList {
@@ -224,6 +231,11 @@ export interface PaginatedTagList {
   results: Tag[];
 }
 
+/**
+ * @nullable
+ */
+export type PatchedIngredientOnHand = OnHandIngredient | null;
+
 export interface PatchedIngredient {
   readonly id?: number;
   /** @maxLength 100 */
@@ -234,10 +246,13 @@ export interface PatchedIngredient {
    * @nullable
    */
   lowest_cost?: number | null;
+  /** @nullable */
+  readonly on_hand?: PatchedIngredientOnHand;
 }
 
 export interface PatchedOnHandIngredient {
   readonly id?: number;
+  ingredient?: number;
   /**
    * Quantity of the ingredient currently on hand
    * @nullable
@@ -255,7 +270,6 @@ export interface PatchedOnHandIngredient {
   warning_quantity?: number | null;
   /** Optional notes about the ingredient on hand */
   notes?: string;
-  ingredient?: number;
 }
 
 export interface PatchedRecipe {
