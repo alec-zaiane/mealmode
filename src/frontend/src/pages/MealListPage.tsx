@@ -1,26 +1,41 @@
 import { useState, useMemo } from 'react';
-import { Search } from 'lucide-react';
+import { calculateRecipeNutrition, calculateRecipeCost } from '../utils/calculations';
+import { Search, DollarSign, Flame } from 'lucide-react';
 import { Input } from '../components/ui/input';
+import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/button';
 import { RecipeCard } from '../components/recipecard';
 import { useRecipesList } from '../api/mealmodeAPI';
 import type { Recipe } from '../api/mealmodeAPI';
 
 export function MealListPage() {
+  const { data: recipeData, isError, isLoading } = useRecipesList();
   const [searchTerm, setSearchTerm] = useState('');
-  const { data: recipeData, isLoading } = useRecipesList();
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [maxCost, setMaxCost] = useState<number | null>(null);
+  const [maxCalories, setMaxCalories] = useState<number | null>(null);
 
-  const recipes = useMemo((): Recipe[] => {
-    const body = recipeData && typeof recipeData === 'object' && 'data' in recipeData
-      ? (recipeData as { data: { results?: Recipe[] } }).data?.results
-      : (recipeData as { results?: Recipe[] } | undefined)?.results;
-    return Array.isArray(body) ? body : [];
-  }, [recipeData]);
+  const filteredMeals = useMemo(() => {
+    return recipeData?.data.results.filter((recipe) => {
+      if (searchTerm && !recipe.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+      // if (selectedTags.length > 0 && !selectedTags.some((tag) => meal.tags.includes(tag))) return false;
+      if (maxCost !== null) {
+        const { costPerServing } = calculateRecipeCost(recipe);
+        if (costPerServing > maxCost) return false;
+      }
+      if (maxCalories !== null) {
+        const { nutritionPerServing } = calculateRecipeNutrition(recipe);
+        if (nutritionPerServing.kcal_per_unit > maxCalories) return false;
+      }
+      return true;
+    });
+  }, [recipeData, searchTerm, selectedTags, maxCost, maxCalories]);
 
-  const filteredRecipes = useMemo(() => {
-    if (!searchTerm.trim()) return recipes;
-    const term = searchTerm.toLowerCase();
-    return recipes.filter((r) => r.name.toLowerCase().includes(term));
-  }, [recipes, searchTerm]);
+  const toggleTag = (tag: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  };
 
   return (
     <div>
@@ -40,29 +55,69 @@ export function MealListPage() {
             className="pl-10"
           />
         </div>
-      </div>
 
-      <div className="mb-4 text-sm text-palette-slate">
-        Showing {filteredRecipes.length} of {recipes.length} meals
-      </div>
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="flex items-center gap-2">
+            <DollarSign className="w-4 h-4 text-palette-slate" />
+            <Input
+              type="number"
+              placeholder="Max cost/serving"
+              value={maxCost ?? ''}
+              onChange={(e) => setMaxCost(e.target.value ? Number(e.target.value) : null)}
+              className="w-40"
+              step="0.5"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Flame className="w-4 h-4 text-palette-slate" />
+            <Input
+              type="number"
+              placeholder="Max calories"
+              value={maxCalories ?? ''}
+              onChange={(e) => setMaxCalories(e.target.value ? Number(e.target.value) : null)}
+              className="w-40"
+            />
+          </div>
+          {selectedTags.length > 0 && (
+            <Button variant="outline" size="sm" onClick={() => setSelectedTags([])}>
+              Clear filters
+            </Button>
+          )}
+        </div>
 
-      {isLoading && (
-        <div className="text-center py-12 text-palette-slate">Loading…</div>
-      )}
-
-      {!isLoading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredRecipes.map((recipe) => (
-            <RecipeCard recipe={recipe} key={recipe.id} />
+        {/* <div className="flex flex-wrap gap-2">
+          {allTags.map((tag) => (
+            <Badge
+              key={tag}
+              variant={selectedTags.includes(tag) ? 'default' : 'outline'}
+              className="cursor-pointer"
+              onClick={() => toggleTag(tag)}
+            >
+              {tag}
+            </Badge>
           ))}
+        </div> */}
+      </div>
+      {!isError && !isLoading && filteredMeals && (
+        <div>
+          <div className="mb-4 text-sm text-palette-slate">
+            Showing {filteredMeals.length} of {recipeData?.data.count ?? "unknown"} meals
+          </div>
+          {
+            filteredMeals.length === 0 && (
+              <div className="text-center py-12 text-palette-taupe">
+                No meals found matching your criteria
+              </div>
+            )
+          }
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {
+              filteredMeals.map((recipe) => { return (<RecipeCard recipe={recipe} key={recipe.id} />) })
+            }
+          </div>
         </div>
       )}
 
-      {!isLoading && filteredRecipes.length === 0 && (
-        <div className="text-center py-12 text-palette-taupe">
-          No meals found
-        </div>
-      )}
     </div>
   );
 }
