@@ -112,7 +112,7 @@ export function MealDetailPage() {
                 Servings
               </CardTitle>
             </CardHeader>
-            <CardContent className="py-2">
+            <CardContent className="py-2 mb-2">
               <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
