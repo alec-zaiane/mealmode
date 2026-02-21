@@ -59,7 +59,9 @@ class RecipeSerializer(serializers.ModelSerializer[models.Recipe]):
 
     def create(self, validated_data: dict):
         recipe_ingredients = validated_data.pop("recipe_ingredients", [])
-        validated_data.pop("ingredients", None)  # M2M through RecipeIngredient; set below
+        validated_data.pop(
+            "ingredients", None
+        )  # M2M through RecipeIngredient; set below
         recipe = models.Recipe.objects.create(**validated_data)
         for item in recipe_ingredients:
             models.RecipeIngredient.objects.create(
