@@ -183,6 +183,12 @@ paths:
         description: The initial index from which to return the results.
         schema:
           type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
       tags:
       - ingredients
       security:
@@ -689,10 +695,16 @@ components:
           format: double
           nullable: true
           description: Lowest known cost per base unit (e.g., $/kg
+        on_hand:
+          allOf:
+          - $ref: '#/components/schemas/OnHandIngredient'
+          readOnly: true
+          nullable: true
       required:
       - id
       - name
       - nutrition_stats
+      - on_hand
     NutritionStats:
       type: object
       properties:
@@ -924,6 +936,11 @@ components:
           format: double
           nullable: true
           description: Lowest known cost per base unit (e.g., $/kg
+        on_hand:
+          allOf:
+          - $ref: '#/components/schemas/OnHandIngredient'
+          readOnly: true
+          nullable: true
     PatchedOnHandIngredient:
       type: object
       properties:
@@ -963,6 +980,11 @@ components:
           items:
             $ref: '#/components/schemas/RecipeIngredient'
           readOnly: true
+        recipe_ingredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeIngredientWrite'
+          writeOnly: true
         tags:
           type: array
           items:
@@ -1020,6 +1042,11 @@ components:
           items:
             $ref: '#/components/schemas/RecipeIngredient'
           readOnly: true
+        recipe_ingredients:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecipeIngredientWrite'
+          writeOnly: true
         tags:
           type: array
           items:
@@ -1081,6 +1108,19 @@ components:
             by the ingredient's nutrition stats)
       required:
       - id
+      - ingredient
+      - quantity
+    RecipeIngredientWrite:
+      type: object
+      description: 'For create/update: list of {ingredient: id, quantity}.'
+      properties:
+        ingredient:
+          type: integer
+        quantity:
+          type: number
+          format: double
+          minimum: 0
+      required:
       - ingredient
       - quantity
     RecipeStep:

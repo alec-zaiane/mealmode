@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from . import models
+from ingredient_store.serializers import OnHandIngredientSerializer
 
 
 class NutritionStatsSerializer(serializers.ModelSerializer[models.NutritionStats]):
@@ -10,10 +11,17 @@ class NutritionStatsSerializer(serializers.ModelSerializer[models.NutritionStats
 
 class IngredientSerializer(serializers.ModelSerializer[models.Ingredient]):
     nutrition_stats = NutritionStatsSerializer(read_only=True)
+    on_hand = OnHandIngredientSerializer(read_only=True, allow_null=True)
 
     class Meta:  # type: ignore
         model = models.Ingredient
-        fields = ("id", "name", "nutrition_stats", "lowest_cost")
+        fields = (
+            "id",
+            "name",
+            "nutrition_stats",
+            "lowest_cost",
+            "on_hand",
+        )
 
 
 class RecipeIngredientSerializer(serializers.ModelSerializer[models.RecipeIngredient]):
@@ -21,7 +29,11 @@ class RecipeIngredientSerializer(serializers.ModelSerializer[models.RecipeIngred
 
     class Meta:  # type: ignore
         model = models.RecipeIngredient
-        fields = ("id", "ingredient", "quantity")
+        fields = (
+            "id",
+            "ingredient",
+            "quantity",
+        )
 
 
 class RecipeIngredientWriteSerializer(serializers.Serializer):
