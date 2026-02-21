@@ -3,6 +3,170 @@ info:
   title: Mealmode API
   version: 1.0.0
 paths:
+  /api/ingredient-store/:
+    get:
+      operationId: ingredient_store_list
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      tags:
+      - ingredient-store
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedOnHandIngredientList'
+          description: ''
+    post:
+      operationId: ingredient_store_create
+      tags:
+      - ingredient-store
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OnHandIngredient'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OnHandIngredient'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OnHandIngredient'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnHandIngredient'
+          description: ''
+  /api/ingredient-store/{id}/:
+    get:
+      operationId: ingredient_store_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this on hand ingredient.
+        required: true
+      tags:
+      - ingredient-store
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnHandIngredient'
+          description: ''
+    put:
+      operationId: ingredient_store_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this on hand ingredient.
+        required: true
+      tags:
+      - ingredient-store
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OnHandIngredient'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/OnHandIngredient'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OnHandIngredient'
+        required: true
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnHandIngredient'
+          description: ''
+    patch:
+      operationId: ingredient_store_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this on hand ingredient.
+        required: true
+      tags:
+      - ingredient-store
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedOnHandIngredient'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedOnHandIngredient'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedOnHandIngredient'
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnHandIngredient'
+          description: ''
+    delete:
+      operationId: ingredient_store_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this on hand ingredient.
+        required: true
+      tags:
+      - ingredient-store
+      security:
+      - cookieAuth: []
+      - basicAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
   /api/ingredients/:
     get:
       operationId: ingredients_list
@@ -619,6 +783,37 @@ components:
           nullable: true
       required:
       - id
+    OnHandIngredient:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        quantity:
+          type: number
+          format: double
+          nullable: true
+          description: Quantity of the ingredient currently on hand
+        desired_quantity:
+          type: number
+          format: double
+          nullable: true
+          description: Desired quantity of the ingredient to have on hand (e.g., for
+            meal planning)
+        warning_quantity:
+          type: number
+          format: double
+          nullable: true
+          description: Optional warning threshold quantity (e.g., if quantity on hand
+            falls below this, issue a warning)
+        notes:
+          type: string
+          description: Optional notes about the ingredient on hand
+        ingredient:
+          type: integer
+      required:
+      - id
+      - ingredient
     PaginatedIngredientList:
       type: object
       required:
@@ -642,6 +837,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Ingredient'
+    PaginatedOnHandIngredientList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/OnHandIngredient'
     PaginatedRecipeList:
       type: object
       required:
@@ -706,6 +924,34 @@ components:
           format: double
           nullable: true
           description: Lowest known cost per base unit (e.g., $/kg
+    PatchedOnHandIngredient:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        quantity:
+          type: number
+          format: double
+          nullable: true
+          description: Quantity of the ingredient currently on hand
+        desired_quantity:
+          type: number
+          format: double
+          nullable: true
+          description: Desired quantity of the ingredient to have on hand (e.g., for
+            meal planning)
+        warning_quantity:
+          type: number
+          format: double
+          nullable: true
+          description: Optional warning threshold quantity (e.g., if quantity on hand
+            falls below this, issue a warning)
+        notes:
+          type: string
+          description: Optional notes about the ingredient on hand
+        ingredient:
+          type: integer
     PatchedRecipe:
       type: object
       properties:

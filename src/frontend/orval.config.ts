@@ -1,7 +1,7 @@
 import { defineConfig } from 'orval';
 
 export default defineConfig({
-    petstore: {
+    mealmode: {
         input: './schema.yaml',
         output: {
             target: './src/api',

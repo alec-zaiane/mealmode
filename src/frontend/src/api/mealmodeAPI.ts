@@ -166,6 +166,28 @@ export interface NutritionStats {
   ingredient?: number | null;
 }
 
+export interface OnHandIngredient {
+  readonly id: number;
+  /**
+   * Quantity of the ingredient currently on hand
+   * @nullable
+   */
+  quantity?: number | null;
+  /**
+   * Desired quantity of the ingredient to have on hand (e.g., for meal planning)
+   * @nullable
+   */
+  desired_quantity?: number | null;
+  /**
+   * Optional warning threshold quantity (e.g., if quantity on hand falls below this, issue a warning)
+   * @nullable
+   */
+  warning_quantity?: number | null;
+  /** Optional notes about the ingredient on hand */
+  notes?: string;
+  ingredient: number;
+}
+
 export interface PaginatedIngredientList {
   count: number;
   /** @nullable */
@@ -173,6 +195,15 @@ export interface PaginatedIngredientList {
   /** @nullable */
   previous?: string | null;
   results: Ingredient[];
+}
+
+export interface PaginatedOnHandIngredientList {
+  count: number;
+  /** @nullable */
+  next?: string | null;
+  /** @nullable */
+  previous?: string | null;
+  results: OnHandIngredient[];
 }
 
 export interface PaginatedRecipeList {
@@ -203,6 +234,28 @@ export interface PatchedIngredient {
    * @nullable
    */
   lowest_cost?: number | null;
+}
+
+export interface PatchedOnHandIngredient {
+  readonly id?: number;
+  /**
+   * Quantity of the ingredient currently on hand
+   * @nullable
+   */
+  quantity?: number | null;
+  /**
+   * Desired quantity of the ingredient to have on hand (e.g., for meal planning)
+   * @nullable
+   */
+  desired_quantity?: number | null;
+  /**
+   * Optional warning threshold quantity (e.g., if quantity on hand falls below this, issue a warning)
+   * @nullable
+   */
+  warning_quantity?: number | null;
+  /** Optional notes about the ingredient on hand */
+  notes?: string;
+  ingredient?: number;
 }
 
 export interface PatchedRecipe {
@@ -291,6 +344,17 @@ export interface Tag {
   name: string;
 }
 
+export type IngredientStoreListParams = {
+/**
+ * Number of results to return per page.
+ */
+limit?: number;
+/**
+ * The initial index from which to return the results.
+ */
+offset?: number;
+};
+
 export type IngredientsListParams = {
 /**
  * Number of results to return per page.
@@ -324,6 +388,401 @@ limit?: number;
 offset?: number;
 };
 
+export const ingredientStoreList = (
+    params?: IngredientStoreListParams, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<PaginatedOnHandIngredientList>> => {
+    
+    
+    return axios.default.get(
+      `http://localhost:8000/api/ingredient-store/`,{
+    ...options,
+        params: {...params, ...options?.params},}
+    );
+  }
+
+
+
+
+export const getIngredientStoreListQueryKey = (params?: IngredientStoreListParams,) => {
+    return [
+    `http://localhost:8000/api/ingredient-store/`, ...(params ? [params]: [])
+    ] as const;
+    }
+
+    
+export const getIngredientStoreListQueryOptions = <TData = Awaited<ReturnType<typeof ingredientStoreList>>, TError = AxiosError<unknown>>(params?: IngredientStoreListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ingredientStoreList>>, TError, TData>>, axios?: AxiosRequestConfig}
+) => {
+
+const {query: queryOptions, axios: axiosOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getIngredientStoreListQueryKey(params);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof ingredientStoreList>>> = ({ signal }) => ingredientStoreList(params, { signal, ...axiosOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof ingredientStoreList>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type IngredientStoreListQueryResult = NonNullable<Awaited<ReturnType<typeof ingredientStoreList>>>
+export type IngredientStoreListQueryError = AxiosError<unknown>
+
+
+export function useIngredientStoreList<TData = Awaited<ReturnType<typeof ingredientStoreList>>, TError = AxiosError<unknown>>(
+ params: undefined |  IngredientStoreListParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof ingredientStoreList>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof ingredientStoreList>>,
+          TError,
+          Awaited<ReturnType<typeof ingredientStoreList>>
+        > , 'initialData'
+      >, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useIngredientStoreList<TData = Awaited<ReturnType<typeof ingredientStoreList>>, TError = AxiosError<unknown>>(
+ params?: IngredientStoreListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ingredientStoreList>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof ingredientStoreList>>,
+          TError,
+          Awaited<ReturnType<typeof ingredientStoreList>>
+        > , 'initialData'
+      >, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useIngredientStoreList<TData = Awaited<ReturnType<typeof ingredientStoreList>>, TError = AxiosError<unknown>>(
+ params?: IngredientStoreListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ingredientStoreList>>, TError, TData>>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useIngredientStoreList<TData = Awaited<ReturnType<typeof ingredientStoreList>>, TError = AxiosError<unknown>>(
+ params?: IngredientStoreListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ingredientStoreList>>, TError, TData>>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getIngredientStoreListQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+export const ingredientStoreCreate = (
+    onHandIngredient: NonReadonly<OnHandIngredient>, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<OnHandIngredient>> => {
+    
+    
+    return axios.default.post(
+      `http://localhost:8000/api/ingredient-store/`,
+      onHandIngredient,options
+    );
+  }
+
+
+
+export const getIngredientStoreCreateMutationOptions = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingredientStoreCreate>>, TError,{data: NonReadonly<OnHandIngredient>}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof ingredientStoreCreate>>, TError,{data: NonReadonly<OnHandIngredient>}, TContext> => {
+
+const mutationKey = ['ingredientStoreCreate'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ingredientStoreCreate>>, {data: NonReadonly<OnHandIngredient>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  ingredientStoreCreate(data,axiosOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type IngredientStoreCreateMutationResult = NonNullable<Awaited<ReturnType<typeof ingredientStoreCreate>>>
+    export type IngredientStoreCreateMutationBody = NonReadonly<OnHandIngredient>
+    export type IngredientStoreCreateMutationError = AxiosError<unknown>
+
+    export const useIngredientStoreCreate = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingredientStoreCreate>>, TError,{data: NonReadonly<OnHandIngredient>}, TContext>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof ingredientStoreCreate>>,
+        TError,
+        {data: NonReadonly<OnHandIngredient>},
+        TContext
+      > => {
+
+      const mutationOptions = getIngredientStoreCreateMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    
+export const ingredientStoreRetrieve = (
+    id: number, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<OnHandIngredient>> => {
+    
+    
+    return axios.default.get(
+      `http://localhost:8000/api/ingredient-store/${id}/`,options
+    );
+  }
+
+
+
+
+export const getIngredientStoreRetrieveQueryKey = (id?: number,) => {
+    return [
+    `http://localhost:8000/api/ingredient-store/${id}/`
+    ] as const;
+    }
+
+    
+export const getIngredientStoreRetrieveQueryOptions = <TData = Awaited<ReturnType<typeof ingredientStoreRetrieve>>, TError = AxiosError<unknown>>(id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ingredientStoreRetrieve>>, TError, TData>>, axios?: AxiosRequestConfig}
+) => {
+
+const {query: queryOptions, axios: axiosOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getIngredientStoreRetrieveQueryKey(id);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof ingredientStoreRetrieve>>> = ({ signal }) => ingredientStoreRetrieve(id, { signal, ...axiosOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof ingredientStoreRetrieve>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type IngredientStoreRetrieveQueryResult = NonNullable<Awaited<ReturnType<typeof ingredientStoreRetrieve>>>
+export type IngredientStoreRetrieveQueryError = AxiosError<unknown>
+
+
+export function useIngredientStoreRetrieve<TData = Awaited<ReturnType<typeof ingredientStoreRetrieve>>, TError = AxiosError<unknown>>(
+ id: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof ingredientStoreRetrieve>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof ingredientStoreRetrieve>>,
+          TError,
+          Awaited<ReturnType<typeof ingredientStoreRetrieve>>
+        > , 'initialData'
+      >, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useIngredientStoreRetrieve<TData = Awaited<ReturnType<typeof ingredientStoreRetrieve>>, TError = AxiosError<unknown>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ingredientStoreRetrieve>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof ingredientStoreRetrieve>>,
+          TError,
+          Awaited<ReturnType<typeof ingredientStoreRetrieve>>
+        > , 'initialData'
+      >, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useIngredientStoreRetrieve<TData = Awaited<ReturnType<typeof ingredientStoreRetrieve>>, TError = AxiosError<unknown>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ingredientStoreRetrieve>>, TError, TData>>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useIngredientStoreRetrieve<TData = Awaited<ReturnType<typeof ingredientStoreRetrieve>>, TError = AxiosError<unknown>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof ingredientStoreRetrieve>>, TError, TData>>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getIngredientStoreRetrieveQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+export const ingredientStoreUpdate = (
+    id: number,
+    onHandIngredient: NonReadonly<OnHandIngredient>, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<OnHandIngredient>> => {
+    
+    
+    return axios.default.put(
+      `http://localhost:8000/api/ingredient-store/${id}/`,
+      onHandIngredient,options
+    );
+  }
+
+
+
+export const getIngredientStoreUpdateMutationOptions = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingredientStoreUpdate>>, TError,{id: number;data: NonReadonly<OnHandIngredient>}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof ingredientStoreUpdate>>, TError,{id: number;data: NonReadonly<OnHandIngredient>}, TContext> => {
+
+const mutationKey = ['ingredientStoreUpdate'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ingredientStoreUpdate>>, {id: number;data: NonReadonly<OnHandIngredient>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  ingredientStoreUpdate(id,data,axiosOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type IngredientStoreUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof ingredientStoreUpdate>>>
+    export type IngredientStoreUpdateMutationBody = NonReadonly<OnHandIngredient>
+    export type IngredientStoreUpdateMutationError = AxiosError<unknown>
+
+    export const useIngredientStoreUpdate = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingredientStoreUpdate>>, TError,{id: number;data: NonReadonly<OnHandIngredient>}, TContext>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof ingredientStoreUpdate>>,
+        TError,
+        {id: number;data: NonReadonly<OnHandIngredient>},
+        TContext
+      > => {
+
+      const mutationOptions = getIngredientStoreUpdateMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    
+export const ingredientStorePartialUpdate = (
+    id: number,
+    patchedOnHandIngredient: NonReadonly<PatchedOnHandIngredient>, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<OnHandIngredient>> => {
+    
+    
+    return axios.default.patch(
+      `http://localhost:8000/api/ingredient-store/${id}/`,
+      patchedOnHandIngredient,options
+    );
+  }
+
+
+
+export const getIngredientStorePartialUpdateMutationOptions = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingredientStorePartialUpdate>>, TError,{id: number;data: NonReadonly<PatchedOnHandIngredient>}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof ingredientStorePartialUpdate>>, TError,{id: number;data: NonReadonly<PatchedOnHandIngredient>}, TContext> => {
+
+const mutationKey = ['ingredientStorePartialUpdate'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ingredientStorePartialUpdate>>, {id: number;data: NonReadonly<PatchedOnHandIngredient>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  ingredientStorePartialUpdate(id,data,axiosOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type IngredientStorePartialUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof ingredientStorePartialUpdate>>>
+    export type IngredientStorePartialUpdateMutationBody = NonReadonly<PatchedOnHandIngredient>
+    export type IngredientStorePartialUpdateMutationError = AxiosError<unknown>
+
+    export const useIngredientStorePartialUpdate = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingredientStorePartialUpdate>>, TError,{id: number;data: NonReadonly<PatchedOnHandIngredient>}, TContext>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof ingredientStorePartialUpdate>>,
+        TError,
+        {id: number;data: NonReadonly<PatchedOnHandIngredient>},
+        TContext
+      > => {
+
+      const mutationOptions = getIngredientStorePartialUpdateMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    
+export const ingredientStoreDestroy = (
+    id: number, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<void>> => {
+    
+    
+    return axios.default.delete(
+      `http://localhost:8000/api/ingredient-store/${id}/`,options
+    );
+  }
+
+
+
+export const getIngredientStoreDestroyMutationOptions = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingredientStoreDestroy>>, TError,{id: number}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof ingredientStoreDestroy>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['ingredientStoreDestroy'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof ingredientStoreDestroy>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  ingredientStoreDestroy(id,axiosOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type IngredientStoreDestroyMutationResult = NonNullable<Awaited<ReturnType<typeof ingredientStoreDestroy>>>
+    
+    export type IngredientStoreDestroyMutationError = AxiosError<unknown>
+
+    export const useIngredientStoreDestroy = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof ingredientStoreDestroy>>, TError,{id: number}, TContext>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof ingredientStoreDestroy>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+
+      const mutationOptions = getIngredientStoreDestroyMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    
 export const ingredientsList = (
     params?: IngredientsListParams, options?: AxiosRequestConfig
  ): Promise<AxiosResponse<PaginatedIngredientList>> => {
