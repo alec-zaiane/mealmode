@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { calculateRecipeNutrition, calculateRecipeCost } from '../utils/calculations';
-import { Search, DollarSign, Flame, Plus } from 'lucide-react';
+import { Search, DollarSign, Flame, Plus, X } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -14,15 +14,31 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../components/ui/dialog';
-import { useRecipesList, useTagsList, useRecipesCreate } from '../api/mealmodeAPI';
+import { useRecipesList, useTagsList, useRecipesCreate, useIngredientsList } from '../api/mealmodeAPI';
 import { getRecipesListQueryKey } from '../api/mealmodeAPI';
-import type { Tag } from '../api/mealmodeAPI';
+import type { Tag, Ingredient } from '../api/mealmodeAPI';
+
+function ingredientUnitLabel(ing: Ingredient): string {
+  const u = ing.nutrition_stats?.base_unit;
+  if (u === 'kg') return 'kg';
+  if (u === 'L') return 'L';
+  if (u === 'pc') return 'pc';
+  return '—';
+}
+
+type SelectedIngredient = { ingredientId: number; quantity: number; name: string; unit: string };
 
 export function MealListPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [ingredientSearch, setIngredientSearch] = useState('');
   const { data: recipeData, isError: recipeIsError, isLoading: recipeIsLoading } = useRecipesList();
   const { data: tagData } = useTagsList();
+  const { data: ingredientsResponse } = useIngredientsList({
+    limit: 50,
+    ...(ingredientSearch.trim() && { search: ingredientSearch.trim() }),
+  });
+  const ingredientsList: Ingredient[] = ingredientsResponse?.data?.results ?? [];
   const createRecipe = useRecipesCreate({
     mutation: {
       onSuccess: (response) => {
@@ -39,7 +55,8 @@ export function MealListPage() {
   const [maxCalories, setMaxCalories] = useState<number | null>(null);
   const [addMealOpen, setAddMealOpen] = useState(false);
   const [newMealName, setNewMealName] = useState('');
-  const [newMealServings, setNewMealServings] = useState(4);
+  const [newMealServings, setNewMealServings] = useState(1);
+  const [selectedIngredients, setSelectedIngredients] = useState<SelectedIngredient[]>([]);
 
   const filteredMeals = useMemo(() => {
     return recipeData?.data.results.filter((recipe) => {
@@ -63,17 +80,43 @@ export function MealListPage() {
     );
   };
 
+  const addIngredient = (ing: Ingredient, quantity = 1) => {
+    if (selectedIngredients.some((s) => s.ingredientId === ing.id)) return;
+    setSelectedIngredients((prev) => [
+      ...prev,
+      { ingredientId: ing.id, quantity, name: ing.name, unit: ingredientUnitLabel(ing) },
+    ]);
+  };
+
+  const removeIngredient = (ingredientId: number) => {
+    setSelectedIngredients((prev) => prev.filter((s) => s.ingredientId !== ingredientId));
+  };
+
+  const setIngredientQuantity = (ingredientId: number, quantity: number) => {
+    setSelectedIngredients((prev) =>
+      prev.map((s) => (s.ingredientId === ingredientId ? { ...s, quantity } : s))
+    );
+  };
+
+
   const handleAddMeal = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMealName.trim()) return;
-    createRecipe.mutate({
-      data: {
-        name: newMealName.trim(),
-        servings: newMealServings,
-      },
-    });
+    const payload = {
+      name: newMealName.trim(),
+      servings: newMealServings,
+      ...(selectedIngredients.length > 0 && {
+        recipe_ingredients: selectedIngredients.map(({ ingredientId, quantity }) => ({
+          ingredient: ingredientId,
+          quantity,
+        })),
+      }),
+    };
+    createRecipe.mutate({ data: payload as { name: string; servings: number; recipe_ingredients?: { ingredient: number; quantity: number }[] } });
     setNewMealName('');
-    setNewMealServings(4);
+    setNewMealServings(1);
+    setSelectedIngredients([]);
+    setIngredientSearch('');
     setAddMealOpen(false);
   };
 
@@ -113,6 +156,67 @@ export function MealListPage() {
                   value={newMealServings}
                   onChange={(e) => setNewMealServings(Number(e.target.value) || 4)}
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-palette-slate mb-1">Ingredients</label>
+                <Input
+                  placeholder="Search ingredients..."
+                  value={ingredientSearch}
+                  onChange={(e) => setIngredientSearch(e.target.value)}
+                  className="mb-2"
+                />
+                <div className="border border-palette-mist rounded-md max-h-32 overflow-y-auto mb-2">
+                  {ingredientsList.length === 0 ? (
+                    <p className="p-2 text-sm text-palette-slate">
+                      {ingredientSearch.trim() ? 'No ingredients found' : 'Type to search ingredients'}
+                    </p>
+                  ) : (
+                    <ul className="p-1">
+                      {ingredientsList.map((ing) => (
+                        <li key={ing.id}>
+                          <button
+                            type="button"
+                            onClick={() => addIngredient(ing)}
+                            disabled={selectedIngredients.some((s) => s.ingredientId === ing.id)}
+                            className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-palette-mist disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {ing.name}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                {selectedIngredients.length > 0 && (
+                  <ul className="space-y-2">
+                    {selectedIngredients.map((sel) => (
+                      <li key={sel.ingredientId} className="flex items-center gap-2 text-sm">
+                        <span className="flex-1 truncate text-palette-taupe">{sel.name}</span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Input
+                            type="number"
+                            min={0}
+                            step="any"
+                            value={sel.quantity}
+                            onChange={(e) => setIngredientQuantity(sel.ingredientId, Number(e.target.value) || 0)}
+                            className="w-20 h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                          <span className="text-palette-slate text-xs w-6">{sel.unit}</span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 shrink-0 p-0"
+                          onClick={() => removeIngredient(sel.ingredientId)}
+                          aria-label="Remove"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
               {createRecipe.isError && (
                 <p className="text-sm text-red-600">Failed to create meal. Try again.</p>
