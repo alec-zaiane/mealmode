@@ -72,6 +72,11 @@ export const BaseUnitEnum = {
   pc: 'pc',
 } as const;
 
+/**
+ * @nullable
+ */
+export type IngredientOnHand = OnHandIngredient | null;
+
 export interface Ingredient {
   readonly id: number;
   /** @maxLength 100 */
@@ -82,6 +87,8 @@ export interface Ingredient {
    * @nullable
    */
   lowest_cost?: number | null;
+  /** @nullable */
+  readonly on_hand: IngredientOnHand;
 }
 
 export interface NutritionStats {
@@ -224,6 +231,11 @@ export interface PaginatedTagList {
   results: Tag[];
 }
 
+/**
+ * @nullable
+ */
+export type PatchedIngredientOnHand = OnHandIngredient | null;
+
 export interface PatchedIngredient {
   readonly id?: number;
   /** @maxLength 100 */
@@ -234,6 +246,8 @@ export interface PatchedIngredient {
    * @nullable
    */
   lowest_cost?: number | null;
+  /** @nullable */
+  readonly on_hand?: PatchedIngredientOnHand;
 }
 
 export interface PatchedOnHandIngredient {
@@ -261,6 +275,7 @@ export interface PatchedOnHandIngredient {
 export interface PatchedRecipe {
   readonly id?: number;
   readonly ingredients_list?: readonly RecipeIngredient[];
+  recipe_ingredients?: RecipeIngredientWrite[];
   readonly tags?: readonly Tag[];
   readonly steps?: readonly RecipeStep[];
   /** @maxLength 100 */
@@ -295,6 +310,7 @@ export interface PatchedTag {
 export interface Recipe {
   readonly id: number;
   readonly ingredients_list: readonly RecipeIngredient[];
+  recipe_ingredients?: RecipeIngredientWrite[];
   readonly tags: readonly Tag[];
   readonly steps: readonly RecipeStep[];
   /** @maxLength 100 */
@@ -324,6 +340,15 @@ export interface RecipeIngredient {
   readonly id: number;
   readonly ingredient: Ingredient;
   /** Quantity in base units (e.g., grams, liters, pieces), defined by the ingredient's nutrition stats) */
+  quantity: number;
+}
+
+/**
+ * For create/update: list of {ingredient: id, quantity}.
+ */
+export interface RecipeIngredientWrite {
+  ingredient: number;
+  /** @minimum 0 */
   quantity: number;
 }
 
@@ -365,7 +390,7 @@ limit?: number;
  */
 offset?: number;
 /**
- * Search ingredients by name (server-side).
+ * A search term.
  */
 search?: string;
 };

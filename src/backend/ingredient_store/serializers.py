@@ -5,4 +5,4 @@ from . import models
 class OnHandIngredientSerializer(serializers.ModelSerializer[models.OnHandIngredient]):
     class Meta:  # type: ignore
         model = models.OnHandIngredient
-        fields = "__all__"
+        fields = ("quantity", "desired_quantity", "warning_quantity", "notes")

@@ -12,11 +12,11 @@ if TYPE_CHECKING:
 
 
 class OnHandIngredient(models.Model):
-    ingredient: models.ForeignKey[api_models.Ingredient, api_models.Ingredient] = (
-        models.ForeignKey(
+    ingredient: models.OneToOneField[api_models.Ingredient, api_models.Ingredient] = (
+        models.OneToOneField(
             api_models.Ingredient,
             on_delete=models.CASCADE,
-            related_name="on_hand_ingredients",
+            related_name="on_hand",
         )
     )
     quantity: "NullableFloatField" = models.FloatField(
