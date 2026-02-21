@@ -30,9 +30,16 @@ class TagSerializer(serializers.ModelSerializer[models.RecipeTag]):
         fields = "__all__"
 
 
+class RecipeStepSerializer(serializers.ModelSerializer[models.RecipeStep]):
+    class Meta:  # type: ignore
+        model = models.RecipeStep
+        fields = "__all__"
+
+
 class RecipeSerializer(serializers.ModelSerializer[models.Recipe]):
     ingredients_list = RecipeIngredientSerializer(many=True, read_only=True)
     tags = TagSerializer(many=True, read_only=True)
+    steps = RecipeStepSerializer(many=True, read_only=True)
 
     class Meta:  # type: ignore
         model = models.Recipe

@@ -10,7 +10,7 @@ import type { Tag } from '../api/mealmodeAPI';
 
 export function MealListPage() {
   const { data: recipeData, isError: recipeIsError, isLoading: recipeIsLoading } = useRecipesList();
-  const { data: tagData, isError: tagIsError, isLoading: tagIsLoading } = useTagsList();
+  const { data: tagData } = useTagsList();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
   const [maxCost, setMaxCost] = useState<number | null>(null);
