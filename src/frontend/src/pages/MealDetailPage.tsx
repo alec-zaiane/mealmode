@@ -127,7 +127,7 @@ export function MealDetailPage() {
                   value={servings}
                   onChange={(e) => setServings(Math.max(1, Number(e.target.value)))}
                   className="w-14 h-8 text-center text-sm py-1"
-                  min={1}
+                  min={0}
                 />
                 <Button
                   variant="outline"
@@ -137,7 +137,7 @@ export function MealDetailPage() {
                 >
                   +
                 </Button>
-                <span className="text-xs text-palette-taupe">(Original: {baseServings})</span>
+                <Button className="text-xs shrink-0 h-8" onClick={() => setServings(baseServings)}>{baseServings} (Original)</Button>
               </div>
             </CardContent>
           </Card>
