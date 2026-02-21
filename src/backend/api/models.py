@@ -186,3 +186,25 @@ class Recipe(models.Model):
 
         steps: "RelatedManager[RecipeStep]"
         ingredients_list: "RelatedManager[RecipeIngredient]"
+
+class MealPlanEntry(models.Model):
+    """A single meal placed on the weekly plan (e.g. Tuesday lunch)."""
+
+    recipe: models.ForeignKey[Recipe, Recipe] = models.ForeignKey(
+        Recipe,
+        on_delete=models.CASCADE,
+        related_name="meal_plan_entries",
+    )
+    day: models.CharField[str, str] = models.CharField(
+        max_length=20,
+        help_text=_("Day of the week, e.g. monday, tuesday"),
+    )
+    slot: models.CharField[str, str] = models.CharField(
+        max_length=20,
+        help_text=_("Meal slot, e.g. breakfast, lunch, dinner"),
+    )
+    servings: models.IntegerField[int, int] = models.IntegerField(default=1)
+
+    class Meta:
+        ordering = ["day", "slot"]
+        verbose_name_plural = "meal plan entries"

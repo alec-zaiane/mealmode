@@ -9,7 +9,7 @@ export default {
       colors: {
         palette: {
           slate: '#632024',
-          mist: '#617891',
+          mist: '#8db4d2',
           cream: '#d5b893', //Banners
           taupe: '#25344f', // Heading Text
           terracotta: '#6f4d38', // Text
@@ -19,3 +19,4 @@ export default {
   },
   plugins: [],
 }
+
