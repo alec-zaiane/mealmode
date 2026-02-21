@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { calculateRecipeNutrition, calculateRecipeCost } from '../utils/calculations';
-import { Search, DollarSign, Flame, Plus, X } from 'lucide-react';
+import { Search, DollarSign, Flame, Plus, X, ChevronDown } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -57,6 +57,19 @@ export function MealListPage() {
   const [newMealName, setNewMealName] = useState('');
   const [newMealServings, setNewMealServings] = useState(1);
   const [selectedIngredients, setSelectedIngredients] = useState<SelectedIngredient[]>([]);
+  const [ingredientDropdownOpen, setIngredientDropdownOpen] = useState(false);
+  const ingredientDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!ingredientDropdownOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ingredientDropdownRef.current && !ingredientDropdownRef.current.contains(e.target as Node)) {
+        setIngredientDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [ingredientDropdownOpen]);
 
   const filteredMeals = useMemo(() => {
     return recipeData?.data.results.filter((recipe) => {
@@ -159,36 +172,8 @@ export function MealListPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-palette-slate mb-1">Ingredients</label>
-                <Input
-                  placeholder="Search ingredients..."
-                  value={ingredientSearch}
-                  onChange={(e) => setIngredientSearch(e.target.value)}
-                  className="mb-2"
-                />
-                <div className="border border-palette-mist rounded-md max-h-32 overflow-y-auto mb-2">
-                  {ingredientsList.length === 0 ? (
-                    <p className="p-2 text-sm text-palette-slate">
-                      {ingredientSearch.trim() ? 'No ingredients found' : 'Type to search ingredients'}
-                    </p>
-                  ) : (
-                    <ul className="p-1">
-                      {ingredientsList.map((ing) => (
-                        <li key={ing.id}>
-                          <button
-                            type="button"
-                            onClick={() => addIngredient(ing)}
-                            disabled={selectedIngredients.some((s) => s.ingredientId === ing.id)}
-                            className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-palette-mist disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {ing.name}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
                 {selectedIngredients.length > 0 && (
-                  <ul className="space-y-2">
+                  <ul className="space-y-2 mb-3 p-3 border border-palette-mist rounded-md bg-palette-cream/30">
                     {selectedIngredients.map((sel) => (
                       <li key={sel.ingredientId} className="flex items-center gap-2 text-sm">
                         <span className="flex-1 truncate text-palette-taupe">{sel.name}</span>
@@ -217,6 +202,52 @@ export function MealListPage() {
                     ))}
                   </ul>
                 )}
+                <div className="relative" ref={ingredientDropdownRef}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-between h-10 font-normal text-palette-slate"
+                    onClick={() => setIngredientDropdownOpen((o) => !o)}
+                    aria-expanded={ingredientDropdownOpen}
+                    aria-haspopup="listbox"
+                  >
+                    <span>Add ingredient...</span>
+                    <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${ingredientDropdownOpen ? 'rotate-180' : ''}`} />
+                  </Button>
+                  {ingredientDropdownOpen && (
+                    <div className="absolute z-10 top-full left-0 right-0 mt-1 border border-palette-mist rounded-md bg-white shadow-lg">
+                      <div className="p-2 border-b border-palette-mist">
+                        <Input
+                          placeholder="Search ingredients..."
+                          value={ingredientSearch}
+                          onChange={(e) => setIngredientSearch(e.target.value)}
+                          className="h-9"
+                          autoFocus
+                        />
+                      </div>
+                      <ul className="max-h-48 overflow-y-auto p-1" role="listbox">
+                        {ingredientsList.length === 0 ? (
+                          <li className="px-2 py-2 text-sm text-palette-slate">
+                            {ingredientSearch.trim() ? 'No ingredients found' : 'Type to search ingredients'}
+                          </li>
+                        ) : (
+                          ingredientsList.map((ing) => (
+                            <li key={ing.id} role="option">
+                              <button
+                                type="button"
+                                onClick={() => addIngredient(ing)}
+                                disabled={selectedIngredients.some((s) => s.ingredientId === ing.id)}
+                                className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-palette-mist disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {ing.name}
+                              </button>
+                            </li>
+                          ))
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
               </div>
               {createRecipe.isError && (
                 <p className="text-sm text-red-600">Failed to create meal. Try again.</p>
