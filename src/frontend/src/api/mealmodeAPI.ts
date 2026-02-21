@@ -300,6 +300,10 @@ limit?: number;
  * The initial index from which to return the results.
  */
 offset?: number;
+/**
+ * Search ingredients by name (server-side).
+ */
+search?: string;
 };
 
 export type RecipesListParams = {

@@ -1,20 +1,75 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { calculateRecipeNutrition, calculateRecipeCost } from '../utils/calculations';
-import { Search, DollarSign, Flame } from 'lucide-react';
+import { Search, DollarSign, Flame, Plus, X, ChevronDown } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { RecipeCard } from '../components/recipecard';
-import { useRecipesList, useTagsList } from '../api/mealmodeAPI';
-import type { Tag } from '../api/mealmodeAPI';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '../components/ui/dialog';
+import { useRecipesList, useTagsList, useRecipesCreate, useIngredientsList } from '../api/mealmodeAPI';
+import { getRecipesListQueryKey } from '../api/mealmodeAPI';
+import type { Tag, Ingredient } from '../api/mealmodeAPI';
+
+function ingredientUnitLabel(ing: Ingredient): string {
+  const u = ing.nutrition_stats?.base_unit;
+  if (u === 'kg') return 'kg';
+  if (u === 'L') return 'L';
+  if (u === 'pc') return 'pc';
+  return '—';
+}
+
+type SelectedIngredient = { ingredientId: number; quantity: number; name: string; unit: string };
 
 export function MealListPage() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [ingredientSearch, setIngredientSearch] = useState('');
   const { data: recipeData, isError: recipeIsError, isLoading: recipeIsLoading } = useRecipesList();
   const { data: tagData } = useTagsList();
+  const { data: ingredientsResponse } = useIngredientsList({
+    limit: 50,
+    ...(ingredientSearch.trim() && { search: ingredientSearch.trim() }),
+  });
+  const ingredientsList: Ingredient[] = ingredientsResponse?.data?.results ?? [];
+  const createRecipe = useRecipesCreate({
+    mutation: {
+      onSuccess: (response) => {
+        queryClient.invalidateQueries({ queryKey: getRecipesListQueryKey() });
+        const res = response as { data?: { id?: number } };
+        const id = res?.data?.id ?? (res as { id?: number })?.id;
+        if (id != null) navigate(`/meal/${id}`);
+      },
+    },
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
   const [maxCost, setMaxCost] = useState<number | null>(null);
   const [maxCalories, setMaxCalories] = useState<number | null>(null);
+  const [addMealOpen, setAddMealOpen] = useState(false);
+  const [newMealName, setNewMealName] = useState('');
+  const [newMealServings, setNewMealServings] = useState(1);
+  const [selectedIngredients, setSelectedIngredients] = useState<SelectedIngredient[]>([]);
+  const [ingredientDropdownOpen, setIngredientDropdownOpen] = useState(false);
+  const ingredientDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!ingredientDropdownOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ingredientDropdownRef.current && !ingredientDropdownRef.current.contains(e.target as Node)) {
+        setIngredientDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [ingredientDropdownOpen]);
 
   const filteredMeals = useMemo(() => {
     return recipeData?.data.results.filter((recipe) => {
@@ -38,11 +93,176 @@ export function MealListPage() {
     );
   };
 
+  const addIngredient = (ing: Ingredient, quantity = 1) => {
+    if (selectedIngredients.some((s) => s.ingredientId === ing.id)) return;
+    setSelectedIngredients((prev) => [
+      ...prev,
+      { ingredientId: ing.id, quantity, name: ing.name, unit: ingredientUnitLabel(ing) },
+    ]);
+  };
+
+  const removeIngredient = (ingredientId: number) => {
+    setSelectedIngredients((prev) => prev.filter((s) => s.ingredientId !== ingredientId));
+  };
+
+  const setIngredientQuantity = (ingredientId: number, quantity: number) => {
+    setSelectedIngredients((prev) =>
+      prev.map((s) => (s.ingredientId === ingredientId ? { ...s, quantity } : s))
+    );
+  };
+
+
+  const handleAddMeal = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMealName.trim()) return;
+    const payload = {
+      name: newMealName.trim(),
+      servings: newMealServings,
+      ...(selectedIngredients.length > 0 && {
+        recipe_ingredients: selectedIngredients.map(({ ingredientId, quantity }) => ({
+          ingredient: ingredientId,
+          quantity,
+        })),
+      }),
+    };
+    createRecipe.mutate({ data: payload as { name: string; servings: number; recipe_ingredients?: { ingredient: number; quantity: number }[] } });
+    setNewMealName('');
+    setNewMealServings(1);
+    setSelectedIngredients([]);
+    setIngredientSearch('');
+    setAddMealOpen(false);
+  };
+
   return (
     <div>
-      <div className="mb-8">
-        <h2 className="text-2xl font-semibold text-palette-taupe mb-2">Meals</h2>
-        <p className="text-palette-slate">Browse and search your meal collection</p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-semibold text-palette-taupe mb-2">Meals</h2>
+          <p className="text-palette-slate">Browse and search your meal collection</p>
+        </div>
+        <Dialog open={addMealOpen} onOpenChange={setAddMealOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              Add meal
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Add meal</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleAddMeal} className="space-y-4 mt-2">
+              <div>
+                <label className="block text-sm font-medium text-palette-slate mb-1">Name</label>
+                <Input
+                  value={newMealName}
+                  onChange={(e) => setNewMealName(e.target.value)}
+                  placeholder="e.g. Greek salad"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-palette-slate mb-1">Servings</label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={newMealServings}
+                  onChange={(e) => setNewMealServings(Number(e.target.value) || 4)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-palette-slate mb-1">Ingredients</label>
+                {selectedIngredients.length > 0 && (
+                  <ul className="space-y-2 mb-3 p-3 border border-palette-mist rounded-md bg-palette-cream/30">
+                    {selectedIngredients.map((sel) => (
+                      <li key={sel.ingredientId} className="flex items-center gap-2 text-sm">
+                        <span className="flex-1 truncate text-palette-taupe">{sel.name}</span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Input
+                            type="number"
+                            min={0}
+                            step="any"
+                            value={sel.quantity}
+                            onChange={(e) => setIngredientQuantity(sel.ingredientId, Number(e.target.value) || 0)}
+                            className="w-20 h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                          <span className="text-palette-slate text-xs w-6">{sel.unit}</span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 shrink-0 p-0"
+                          onClick={() => removeIngredient(sel.ingredientId)}
+                          aria-label="Remove"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className="relative" ref={ingredientDropdownRef}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-between h-10 font-normal text-palette-slate"
+                    onClick={() => setIngredientDropdownOpen((o) => !o)}
+                    aria-expanded={ingredientDropdownOpen}
+                    aria-haspopup="listbox"
+                  >
+                    <span>Add ingredient...</span>
+                    <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${ingredientDropdownOpen ? 'rotate-180' : ''}`} />
+                  </Button>
+                  {ingredientDropdownOpen && (
+                    <div className="absolute z-10 top-full left-0 right-0 mt-1 border border-palette-mist rounded-md bg-white shadow-lg">
+                      <div className="p-2 border-b border-palette-mist">
+                        <Input
+                          placeholder="Search ingredients..."
+                          value={ingredientSearch}
+                          onChange={(e) => setIngredientSearch(e.target.value)}
+                          className="h-9"
+                          autoFocus
+                        />
+                      </div>
+                      <ul className="max-h-48 overflow-y-auto p-1" role="listbox">
+                        {ingredientsList.length === 0 ? (
+                          <li className="px-2 py-2 text-sm text-palette-slate">
+                            {ingredientSearch.trim() ? 'No ingredients found' : 'Type to search ingredients'}
+                          </li>
+                        ) : (
+                          ingredientsList.map((ing) => (
+                            <li key={ing.id} role="option">
+                              <button
+                                type="button"
+                                onClick={() => addIngredient(ing)}
+                                disabled={selectedIngredients.some((s) => s.ingredientId === ing.id)}
+                                className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-palette-mist disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {ing.name}
+                              </button>
+                            </li>
+                          ))
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+              {createRecipe.isError && (
+                <p className="text-sm text-red-600">Failed to create meal. Try again.</p>
+              )}
+              <div className="flex gap-2 justify-end">
+                <Button type="button" variant="outline" onClick={() => setAddMealOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={createRecipe.isPending}>
+                  {createRecipe.isPending ? 'Creating…' : 'Create'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="mb-6">
