@@ -11,7 +11,7 @@ export function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
   return (
     <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-1.5 text-sm">
       {items.map((item, i) => {
-        const isLast = i === items.length - 1;
+        // const isLast = i === items.length - 1;
         return (
           <span key={i} className="flex items-center gap-1.5">
             {i > 0 && (

@@ -5,6 +5,8 @@ import {
   useMealPlanEntriesCreate,
   useMealPlanEntriesDestroy,
   getMealPlanEntriesListQueryKey,
+  type DayEnum,
+  type SlotEnum,
 } from '../api/mealmodeAPI';
 
 export interface MealPlanEntry {
@@ -66,8 +68,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         createEntry.mutate({
           data: {
             recipe: Number(entry.mealId),
-            day: entry.day,
-            slot: entry.slot,
+            day: entry.day as DayEnum,
+            slot: entry.slot as SlotEnum,
             servings: entry.servings,
           },
         });

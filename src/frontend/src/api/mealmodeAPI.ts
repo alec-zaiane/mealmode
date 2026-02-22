@@ -73,6 +73,29 @@ export const BaseUnitEnum = {
 } as const;
 
 /**
+ * * `monday` - Monday
+* `tuesday` - Tuesday
+* `wednesday` - Wednesday
+* `thursday` - Thursday
+* `friday` - Friday
+* `saturday` - Saturday
+* `sunday` - Sunday
+ */
+export type DayEnum = typeof DayEnum[keyof typeof DayEnum];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const DayEnum = {
+  monday: 'monday',
+  tuesday: 'tuesday',
+  wednesday: 'wednesday',
+  thursday: 'thursday',
+  friday: 'friday',
+  saturday: 'saturday',
+  sunday: 'sunday',
+} as const;
+
+/**
  * @nullable
  */
 export type IngredientOnHand = OnHandIngredient | null;
@@ -94,16 +117,23 @@ export interface Ingredient {
 export interface MealPlanEntry {
   readonly id: number;
   recipe: number;
-  /**
-   * Day of the week, e.g. monday, tuesday
-   * @maxLength 20
-   */
-  day: string;
-  /**
-   * Meal slot, e.g. breakfast, lunch, dinner
-   * @maxLength 20
-   */
-  slot: string;
+  /** Day of the week
+
+* `monday` - Monday
+* `tuesday` - Tuesday
+* `wednesday` - Wednesday
+* `thursday` - Thursday
+* `friday` - Friday
+* `saturday` - Saturday
+* `sunday` - Sunday */
+  day: DayEnum;
+  /** Meal slot (e.g. breakfast, lunch, dinner)
+
+* `breakfast` - Breakfast
+* `lunch` - Lunch
+* `dinner` - Dinner
+* `snack` - Snack */
+  slot: SlotEnum;
   /**
    * @minimum -9223372036854776000
    * @maximum 9223372036854776000
@@ -308,6 +338,7 @@ export interface PatchedRecipe {
   recipe_steps?: RecipeStepWrite[];
   readonly tags?: readonly Tag[];
   readonly steps?: readonly RecipeStep[];
+  tag_ids?: number[];
   /** @maxLength 100 */
   name?: string;
   /**
@@ -344,6 +375,7 @@ export interface Recipe {
   recipe_steps?: RecipeStepWrite[];
   readonly tags: readonly Tag[];
   readonly steps: readonly RecipeStep[];
+  tag_ids?: number[];
   /** @maxLength 100 */
   name: string;
   /**
@@ -402,6 +434,23 @@ export interface RecipeStepWrite {
   step_number: number;
   description: string;
 }
+
+/**
+ * * `breakfast` - Breakfast
+* `lunch` - Lunch
+* `dinner` - Dinner
+* `snack` - Snack
+ */
+export type SlotEnum = typeof SlotEnum[keyof typeof SlotEnum];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const SlotEnum = {
+  breakfast: 'breakfast',
+  lunch: 'lunch',
+  dinner: 'dinner',
+  snack: 'snack',
+} as const;
 
 export interface Tag {
   readonly id: number;
@@ -467,6 +516,10 @@ limit?: number;
  * The initial index from which to return the results.
  */
 offset?: number;
+/**
+ * A search term.
+ */
+search?: string;
 };
 
 export const ingredientStoreList = (

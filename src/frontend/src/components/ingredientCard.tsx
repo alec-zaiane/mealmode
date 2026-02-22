@@ -2,7 +2,6 @@ import { useNavigate } from "react-router-dom";
 import type { Ingredient } from "../api/mealmodeAPI";
 import { Card } from "./ui/card";
 import { ChevronsRight, CircleAlert } from "lucide-react";
-import { Button } from "./ui/button";
 
 
 export function IngredientCard({ ingredient }: { ingredient: Ingredient }) {
