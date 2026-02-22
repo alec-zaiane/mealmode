@@ -2510,6 +2510,66 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
       return useMutation(mutationOptions, queryClient);
     }
     
+/**
+ * Scrape all sources, update cached_price/cached_source, return updated scraper.
+ */
+export const scrapersRefreshCreate = (
+    id: number,
+    scraper: NonReadonly<Scraper>, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<Scraper>> => {
+    
+    
+    return axios.default.post(
+      `http://localhost:8000/api/scrapers/${id}/refresh/`,
+      scraper,options
+    );
+  }
+
+
+
+export const getScrapersRefreshCreateMutationOptions = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scrapersRefreshCreate>>, TError,{id: number;data: NonReadonly<Scraper>}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof scrapersRefreshCreate>>, TError,{id: number;data: NonReadonly<Scraper>}, TContext> => {
+
+const mutationKey = ['scrapersRefreshCreate'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof scrapersRefreshCreate>>, {id: number;data: NonReadonly<Scraper>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  scrapersRefreshCreate(id,data,axiosOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ScrapersRefreshCreateMutationResult = NonNullable<Awaited<ReturnType<typeof scrapersRefreshCreate>>>
+    export type ScrapersRefreshCreateMutationBody = NonReadonly<Scraper>
+    export type ScrapersRefreshCreateMutationError = AxiosError<unknown>
+
+    export const useScrapersRefreshCreate = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scrapersRefreshCreate>>, TError,{id: number;data: NonReadonly<Scraper>}, TContext>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof scrapersRefreshCreate>>,
+        TError,
+        {id: number;data: NonReadonly<Scraper>},
+        TContext
+      > => {
+
+      const mutationOptions = getScrapersRefreshCreateMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    
 export const sourcesList = (
     params?: SourcesListParams, options?: AxiosRequestConfig
  ): Promise<AxiosResponse<PaginatedSourceList>> => {

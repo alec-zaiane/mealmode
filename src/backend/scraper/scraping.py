@@ -54,9 +54,10 @@ def from_superstore(code: str) -> ScrapingReturn:
         cookies=cookies,
         headers=headers,
     )
-    return min(
+    out = min(
         [
             e["price"]["value"] if not e["dealPrice"] else e["dealPrice"]
             for e in response.json()["offers"]
         ]
     )
+    return (out, None)

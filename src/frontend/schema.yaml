@@ -740,6 +740,41 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/scrapers/{id}/refresh/:
+    post:
+      operationId: scrapers_refresh_create
+      description: Scrape all sources, update cached_price/cached_source, return updated
+        scraper.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this scraper.
+        required: true
+      tags:
+      - scrapers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Scraper'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Scraper'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Scraper'
+      security:
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scraper'
+          description: ''
   /api/sources/:
     get:
       operationId: sources_list
