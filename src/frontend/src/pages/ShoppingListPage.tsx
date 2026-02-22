@@ -60,8 +60,6 @@ function ShoppingListContent() {
     // For a hackathon demo, we'll fake the compilation time and show a magic success state.
     setTimeout(() => {
       setCheckoutStatus('success');
-      // Revert back to idle after a few seconds so they could click it again if they want
-      setTimeout(() => setCheckoutStatus('idle'), 3000);
     }, 1500);
   }, []);
 
@@ -123,10 +121,10 @@ function ShoppingListContent() {
             <Button 
               onClick={checkoutStatus === 'idle' ? handleInstacartCheckout : undefined} 
               disabled={checkoutStatus === 'loading'} 
-              className={`w-full sm:w-auto flex items-center justify-center gap-2 border-0 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg ${
+              className={`w-full sm:w-auto flex items-center justify-center gap-2 border-0 transition-colors duration-300 ${
                 checkoutStatus === 'success' 
-                  ? 'bg-green-600 hover:bg-green-700 text-white' 
-                  : 'bg-[#0aad0a] hover:bg-[#088c08] text-white'
+                  ? 'bg-green-600 text-white' 
+                  : 'bg-[#0aad0a] text-white'
               }`}
             >
               {checkoutStatus === 'loading' && (

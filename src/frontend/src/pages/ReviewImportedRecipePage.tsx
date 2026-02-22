@@ -374,19 +374,7 @@ export function ReviewImportedRecipePage() {
                   </div>
 
                   <div className="grid grid-cols-1 gap-3 md:grid-cols-11">
-                    <div className="md:col-span-2">
-                      <label className="mb-1 block text-xs font-semibold text-palette-textMuted">Confidence</label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min={0}
-                        max={1}
-                        value={ingredient.confidence}
-                        readOnly
-                        className="h-10 cursor-not-allowed border-transparent bg-black/5 text-palette-textMuted"
-                      />
-                    </div>
-                    <div className="md:col-span-9">
+                    <div className="md:col-span-11">
                       <label className="mb-1 block text-xs font-semibold text-palette-textMuted">
                         {ingredient.best_guess_ingredient == null ? 'Search ingredient' : 'Matched ingredient'}
                       </label>

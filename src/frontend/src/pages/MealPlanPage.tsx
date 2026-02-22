@@ -68,11 +68,11 @@ function PlanSlot({ day, slot, planEntry, selectedMealId, onPlace, onRemove, onV
 
   return (
     <div
-      className={`min-h-24 p-2 border rounded-2xl transition-all duration-300 ${
+      className={`h-24 border rounded-2xl overflow-hidden transition-all duration-300 ${planEntry ? 'p-0' : 'p-2'} ${
         canPlace
           ? 'border-palette-primary border-dashed bg-palette-primary/5 cursor-pointer hover:bg-palette-primary/10 scale-[1.02]'
           : planEntry
-          ? 'border-transparent bg-transparent'
+          ? 'border-palette-border bg-white'
           : 'border-dashed border-palette-border bg-gray-50/50'
       }`}
       onClick={canPlace ? handleSlotClick : undefined}
@@ -81,16 +81,17 @@ function PlanSlot({ day, slot, planEntry, selectedMealId, onPlace, onRemove, onV
       onKeyDown={canPlace ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSlotClick(); } } : undefined}
     >
       {planEntry ? (
-        <div className="relative group h-full">
+        <div className="relative group h-full overflow-hidden">
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onRemove(planEntry.id); }}
-            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md z-10 hover:bg-red-600 scale-90 group-hover:scale-100"
+            className="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white shadow-md transition-colors hover:bg-red-600"
+            aria-label="Remove meal from slot"
           >
             <X className="w-3.5 h-3.5" />
           </button>
           <div
-            className="p-3 h-full bg-white border border-palette-border rounded-xl cursor-pointer hover:border-palette-primary/40 hover:shadow-soft transition-all transform group-hover:-translate-y-0.5"
+            className="h-full cursor-pointer bg-white p-3 transition-colors hover:bg-palette-primary/5"
             onClick={(e) => { e.stopPropagation(); onViewMeal(planEntry.mealId); }}
           >
             <div className="font-brand font-bold text-sm text-palette-text line-clamp-2 leading-tight mb-1">{planEntry.mealName}</div>

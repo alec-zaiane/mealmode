@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { calculateRecipeNutrition, calculateRecipeCost } from '../utils/calculations';
-import { Search, DollarSign, Flame, Plus, X, Sparkles, Salad, BadgeDollarSign, Activity, UtensilsCrossed, Link as LinkIcon } from 'lucide-react';
+import { Search, DollarSign, Flame, Plus, X, Sparkles, Salad, BadgeDollarSign, Activity, UtensilsCrossed, Link as LinkIcon, Trash2 } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { RecipeCard } from '../components/recipecard';
@@ -17,9 +17,11 @@ import {
 import {
   useRecipesList,
   useTagsList,
+  useTagsDestroy,
   useRecipesCreate,
   useConfirmableRecipesLoadRecipeCreate,
   getRecipesListQueryKey,
+  getTagsListQueryKey,
   ingredientsRetrieve,
 } from '../api/mealmodeAPI';
 import type {
@@ -38,10 +40,21 @@ function ingredientUnitLabel(ing: Ingredient): string {
 type SelectedIngredient = { ingredientId: number; quantity: number; name: string; unit: string };
 
 export function MealListPage() {
+  const MAX_COST_SLIDER_LIMIT = 100;
+  const MAX_CALORIES_SLIDER_LIMIT = 5000;
+
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: recipeData, isError: recipeIsError, isLoading: recipeIsLoading } = useRecipesList();
   const { data: tagData } = useTagsList();
+  const destroyTag = useTagsDestroy({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getTagsListQueryKey() });
+        queryClient.invalidateQueries({ queryKey: getRecipesListQueryKey() });
+      },
+    },
+  });
   const createRecipe = useRecipesCreate({
     mutation: {
       onSuccess: (response) => {
@@ -53,9 +66,10 @@ export function MealListPage() {
     },
   });
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
-  const [maxCost, setMaxCost] = useState<number | null>(null);
-  const [maxCalories, setMaxCalories] = useState<number | null>(null);
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+  const [tagMatchMode, setTagMatchMode] = useState<'any' | 'all'>('any');
+  const [maxCost, setMaxCost] = useState<number>(MAX_COST_SLIDER_LIMIT);
+  const [maxCalories, setMaxCalories] = useState<number>(MAX_CALORIES_SLIDER_LIMIT);
   const [addMealOpen, setAddMealOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importUrl, setImportUrl] = useState('');
@@ -65,22 +79,28 @@ export function MealListPage() {
   const [newMealSteps, setNewMealSteps] = useState<string[]>([]);
   const [selectedIngredients, setSelectedIngredients] = useState<SelectedIngredient[]>([]);
   const loadRecipe = useConfirmableRecipesLoadRecipeCreate();
+  const hasActiveFilters = selectedTagIds.length > 0
+    || maxCost < MAX_COST_SLIDER_LIMIT
+    || maxCalories < MAX_CALORIES_SLIDER_LIMIT;
 
   const filteredMeals = useMemo(() => {
     return recipeData?.data.results?.filter((recipe) => {
       if (searchTerm && !recipe.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-      if (selectedTags.length > 0 && !selectedTags.some((tag) => recipe.tags?.some((t) => t.id === tag.id))) return false;
-      if (maxCost !== null) {
-        const { costPerServing } = calculateRecipeCost(recipe);
-        if (costPerServing > maxCost) return false;
+      if (selectedTagIds.length > 0) {
+        const recipeTagIds = new Set((recipe.tags ?? []).map((t) => t.id));
+        const tagMatch =
+          tagMatchMode === 'any'
+            ? selectedTagIds.some((tagId) => recipeTagIds.has(tagId))
+            : selectedTagIds.every((tagId) => recipeTagIds.has(tagId));
+        if (!tagMatch) return false;
       }
-      if (maxCalories !== null) {
-        const { nutritionPerServing } = calculateRecipeNutrition(recipe);
-        if (nutritionPerServing.kcal_per_unit > maxCalories) return false;
-      }
+      const { costPerServing } = calculateRecipeCost(recipe);
+      if (costPerServing > maxCost) return false;
+      const { nutritionPerServing } = calculateRecipeNutrition(recipe);
+      if (nutritionPerServing.kcal_per_unit > maxCalories) return false;
       return true;
     });
-  }, [recipeData, searchTerm, selectedTags, maxCost, maxCalories]);
+  }, [recipeData, searchTerm, selectedTagIds, tagMatchMode, maxCost, maxCalories]);
 
   const recipeInsights = useMemo(() => {
     const recipes = filteredMeals ?? [];
@@ -118,10 +138,17 @@ export function MealListPage() {
     };
   }, [filteredMeals]);
 
-  const toggleTag = (tag: Tag) => {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+  const toggleTag = (tagId: number) => {
+    setSelectedTagIds((prev) =>
+      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
     );
+  };
+
+  const handleDeleteTag = (tag: Tag) => {
+    const confirmed = window.confirm(`Delete tag "${tag.name}" everywhere?`);
+    if (!confirmed) return;
+    destroyTag.mutate({ id: tag.id });
+    setSelectedTagIds((prev) => prev.filter((id) => id !== tag.id));
   };
 
   const addIngredient = (ing: Ingredient, quantity = 1) => {
@@ -440,50 +467,133 @@ export function MealListPage() {
 
         {/* Sub-Filters */}
         <div className="flex flex-wrap gap-3 items-center">
-          <div className="flex w-full items-center gap-2 rounded-2xl border-2 border-transparent bg-[#F5F4F1] py-1.5 pl-4 pr-2 transition-all sm:w-auto sm:pl-5">
-            <DollarSign className="w-5 h-5 text-palette-amber" />
+          <div className="w-full rounded-2xl border-2 border-transparent bg-[#F5F4F1] py-3 px-4 transition-all">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-palette-amber" />
+                <span className="text-sm font-semibold text-palette-text">Max cost</span>
+              </div>
+              <span className="text-sm font-semibold text-palette-text">${maxCost.toFixed(1)}</span>
+            </div>
             <input
-              type="number"
-              placeholder="Max cost"
-              value={maxCost ?? ''}
-              onChange={(e) => setMaxCost(e.target.value ? Number(e.target.value) : null)}
-              className="h-10 w-full border-none bg-transparent px-1 text-base font-medium placeholder:text-[#A3A3A0] shadow-none outline-none focus:outline-none focus:ring-0 sm:w-28"
+              type="range"
+              min={0}
+              max={MAX_COST_SLIDER_LIMIT}
+              value={maxCost}
+              onChange={(e) => setMaxCost(Number(e.target.value))}
+              className="h-2 w-full cursor-pointer accent-palette-amber"
               step="0.5"
             />
           </div>
-          <div className="flex w-full items-center gap-2 rounded-2xl border-2 border-transparent bg-[#F5F4F1] py-1.5 pl-4 pr-2 transition-all sm:w-auto sm:pl-5">
-            <Flame className="w-5 h-5 text-palette-emerald" />
+          <div className="w-full rounded-2xl border-2 border-transparent bg-[#F5F4F1] py-3 px-4 transition-all">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Flame className="w-5 h-5 text-orange-500" />
+                <span className="text-sm font-semibold text-palette-text">Max cal</span>
+              </div>
+              <span className="text-sm font-semibold text-palette-text">{Math.round(maxCalories)} kcal</span>
+            </div>
             <input
-              type="number"
-              placeholder="Max cal"
-              value={maxCalories ?? ''}
-              onChange={(e) => setMaxCalories(e.target.value ? Number(e.target.value) : null)}
-              className="h-10 w-full border-none bg-transparent px-1 text-base font-medium placeholder:text-[#A3A3A0] shadow-none outline-none focus:outline-none focus:ring-0 sm:w-28"
+              type="range"
+              min={0}
+              max={MAX_CALORIES_SLIDER_LIMIT}
+              value={maxCalories}
+              onChange={(e) => setMaxCalories(Number(e.target.value))}
+              className="h-2 w-full cursor-pointer accent-orange-500"
+              step={10}
             />
           </div>
-          {selectedTags.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setSelectedTags([])}
-              className="h-11 w-full rounded-2xl bg-[#F5F4F1] px-6 text-sm font-bold text-[#8A8A86] transition-colors hover:bg-palette-border/50 focus:outline-none sm:h-12 sm:w-auto"
-            >
-              Clear filters
-            </button>
-          )}
         </div>
 
         {/* Tags */}
-        <div className="flex flex-wrap gap-2 pt-3">
-          {tagData?.data.results?.map((tag) => (
-            <button
-              key={tag.id}
-              type="button"
-              className={`cursor-pointer rounded-2xl px-5 py-2 text-sm font-bold m-0 outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-palette-primary/20 shadow-none transition-colors border-2 ${selectedTags.includes(tag) ? 'bg-palette-text border-palette-text text-white' : 'bg-[#F5F4F1] border-transparent text-[#8A8A86] hover:bg-white hover:border-palette-primary/20'}`}
-              onClick={() => toggleTag(tag)}
-            >
-              {tag.name}
-            </button>
-          ))}
+        <div className="space-y-3 pt-1">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h4 className="text-sm font-bold text-palette-text">Tags</h4>
+              <p className="text-xs text-[#8A8A86]">
+                {selectedTagIds.length === 0
+                  ? 'Select one or more tags to filter recipes.'
+                  : `Filtering by ${selectedTagIds.length} tag${selectedTagIds.length > 1 ? 's' : ''}.`}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="inline-flex rounded-xl border border-palette-border overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setTagMatchMode('any')}
+                  className={`px-3 py-1.5 text-xs font-bold transition-colors ${
+                    tagMatchMode === 'any'
+                      ? 'bg-palette-text text-white'
+                      : 'bg-white text-[#8A8A86] hover:bg-[#F5F4F1]'
+                  }`}
+                >
+                  Match any
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTagMatchMode('all')}
+                  className={`border-l border-palette-border px-3 py-1.5 text-xs font-bold transition-colors ${
+                    tagMatchMode === 'all'
+                      ? 'bg-palette-text text-white'
+                      : 'bg-white text-[#8A8A86] hover:bg-[#F5F4F1]'
+                  }`}
+                >
+                  Match all
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedTagIds([]);
+                  setTagMatchMode('any');
+                  setMaxCost(MAX_COST_SLIDER_LIMIT);
+                  setMaxCalories(MAX_CALORIES_SLIDER_LIMIT);
+                }}
+                className={`h-8 rounded-xl bg-[#F5F4F1] px-3 text-xs font-bold text-[#8A8A86] transition-colors hover:bg-palette-border/50 focus:outline-none ${
+                  hasActiveFilters ? '' : 'invisible pointer-events-none'
+                }`}
+              >
+                Clear filters
+              </button>
+            </div>
+          </div>
+
+          <div className="max-h-48 overflow-y-auto pr-1">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+              {tagData?.data.results?.map((tag) => (
+                <div key={tag.id} className="group relative min-w-0">
+                  <button
+                    type="button"
+                    className={`w-full cursor-pointer truncate rounded-2xl px-4 py-2 pr-9 text-left text-sm font-bold m-0 outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-palette-primary/20 shadow-none transition-colors border-2 ${
+                      selectedTagIds.includes(tag.id)
+                        ? 'bg-palette-text border-palette-text text-white'
+                        : 'bg-[#F5F4F1] border-transparent text-[#8A8A86] hover:bg-white hover:border-palette-primary/20'
+                    }`}
+                    onClick={() => toggleTag(tag.id)}
+                    title={tag.name}
+                  >
+                    {tag.name}
+                  </button>
+                  <button
+                    type="button"
+                    className={`absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100 ${
+                      selectedTagIds.includes(tag.id)
+                        ? 'text-white/80 hover:text-white'
+                        : 'text-[#8A8A86] hover:text-red-600'
+                    }`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteTag(tag);
+                    }}
+                    aria-label={`Delete tag ${tag.name}`}
+                    title={`Delete tag ${tag.name}`}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
