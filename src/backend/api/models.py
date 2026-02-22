@@ -120,6 +120,7 @@ class Ingredient(models.Model):
 
     if TYPE_CHECKING:
         nutrition_stats: "models.OneToOneField[NutritionStats]"
+        id: int
 
     def __str__(self) -> str:
         return f"{self.name} ({self.nutrition_stats.inline_str() if hasattr(self, 'nutrition_stats') else 'No nutrition stats'})"
@@ -205,6 +206,7 @@ class Recipe(models.Model):
 
         steps: "RelatedManager[RecipeStep]"
         ingredients_list: "RelatedManager[RecipeIngredient]"
+
 
 class MealPlanEntry(models.Model):
     """A single meal placed on the weekly plan (e.g. Tuesday lunch)."""

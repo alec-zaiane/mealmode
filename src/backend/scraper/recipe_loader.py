@@ -206,6 +206,10 @@ class StageOne:
 
 
 class IngredientMatcher:
+    def __init__(self) -> None:
+        self.cache_healthy = False
+        self.cached_ingredient_weights: dict[int, list[tuple[str, float]]] = {}
+
     STOP_WORDS = {
         "a",
         "an",
@@ -250,26 +254,22 @@ class IngredientMatcher:
             weighted_tokens.append((token, weight))
         return weighted_tokens
 
-    @staticmethod
     def score_match(
-        source_token_weights: list[tuple[str, float]], ingredient_name: str
+        self, source_token_weights: list[tuple[str, float]], ingredient_id: int
     ) -> float:
-        ingredient_tokens = IngredientMatcher.tokens_without_stopwords(
-            IngredientMatcher.tokenize(ingredient_name)
-        )
-        if not ingredient_tokens:
+        if ingredient_id not in self.cached_ingredient_weights:
             return 0.0
 
-        ingredient_set = IngredientMatcher.weigh_tokens(ingredient_tokens)
+        ingredient_token_weights = self.cached_ingredient_weights[ingredient_id]
         weighted_overlap_count = sum(
             weight
             for token, weight in source_token_weights
-            if any(token == ing_token for ing_token, _ in ingredient_set)
+            if any(token == ing_token for ing_token, _ in ingredient_token_weights)
         )
         if weighted_overlap_count == 0:
             return 0.0
 
-        precision = weighted_overlap_count / len(ingredient_set)
+        precision = weighted_overlap_count / len(ingredient_token_weights)
         recall = weighted_overlap_count / len(source_token_weights)
         denominator = precision + recall
         base_f1 = (2 * precision * recall / denominator) if denominator > 0 else 0.0
@@ -277,11 +277,25 @@ class IngredientMatcher:
         score = base_f1
         return max(0.0, min(1.0, score))
 
-    @staticmethod
+    def populate_cache(self, ingredients: list[models.Ingredient]) -> None:
+        self.cached_ingredient_weights = {
+            ingredient.id: IngredientMatcher.weigh_tokens(
+                IngredientMatcher.tokens_without_stopwords(
+                    IngredientMatcher.tokenize(ingredient.name)
+                )
+            )
+            for ingredient in ingredients
+        }
+        self.cache_healthy = True
+
     def find_best_match(
+        self,
         source_text: str,
         ingredients: list[models.Ingredient],
     ) -> tuple[Optional[models.Ingredient], float]:
+        if not self.cache_healthy:
+            self.populate_cache(ingredients)
+
         best_match: Optional[models.Ingredient] = None
         best_score = 0.0
 
@@ -292,7 +306,7 @@ class IngredientMatcher:
         )
 
         for ingredient in ingredients:
-            score = IngredientMatcher.score_match(source_weights, ingredient.name)
+            score = self.score_match(source_weights, ingredient.id)
             if score > best_score:
                 best_match = ingredient
                 best_score = score
@@ -465,7 +479,9 @@ class StageTwo:
         )
 
     @staticmethod
-    def match_ingredient(ingredient_str: str) -> StageTwo.IngredientMatch:
+    def match_ingredient(
+        ingredient_str: str, matcher: IngredientMatcher
+    ) -> StageTwo.IngredientMatch:
         source_text = ingredient_str.strip()
         quantity = StageTwo.parse_quantity_convert_unit_to_kg(source_text)
         normalized_source = StageTwo.strip_leading_unit_alias(
@@ -501,7 +517,7 @@ class StageTwo:
         if not candidate_ingredients:
             candidate_ingredients = list(models.Ingredient.objects.all())
 
-        best_match, best_confidence = IngredientMatcher.find_best_match(
+        best_match, best_confidence = matcher.find_best_match(
             candidate,
             candidate_ingredients,
         )
@@ -520,8 +536,9 @@ class StageTwo:
     def load_recipe_stage_two(
         stage_one_result: StageOne.RecipeLoaderInitialFetch,
     ) -> RecipeLoadingStageTwoResult:
+        ingredient_matcher = IngredientMatcher()
         ingredient_matches = [
-            StageTwo.match_ingredient(ingredient_str)
+            StageTwo.match_ingredient(ingredient_str, ingredient_matcher)
             for ingredient_str in stage_one_result.ingredients
         ]
 
