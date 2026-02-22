@@ -10,6 +10,7 @@ class SourceSerializer(serializers.ModelSerializer[models.Source]):
 
 class ScraperSerializer(serializers.ModelSerializer[models.Scraper]):
     cached_source = SourceSerializer(read_only=True)
+    sources = SourceSerializer(many=True, read_only=True)
 
     class Meta:  # type: ignore
         model = models.Scraper

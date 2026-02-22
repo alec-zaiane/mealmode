@@ -1,47 +1,68 @@
 from django.db import models
 from scraper import scraping
-from datetime import datetime, timedelta
-from django.utils import timezone
+from datetime import datetime, timedelta, timezone
 
 from api.models import IngredientUnit
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from api.models import NullableFloatField
+    from api.models import NullableFloatField, Ingredient
 
 
 class Scraper(models.Model):
-    cached_url: models.ForeignKey["Source", "Source"] = models.ForeignKey(
-        "Source", on_delete=models.SET_NULL, null=True, related_name="best_for"
+    ingredient: "models.OneToOneField[Optional[Ingredient], Optional[Ingredient]]" = (
+        models.OneToOneField(
+            "api.Ingredient",
+            on_delete=models.CASCADE,
+            related_name="scraper",
+            null=True,
+            blank=True,
+        )
     )
-    cached_price: "NullableFloatField" = models.FloatField(null=True)
+    cached_source: models.ForeignKey["Optional[Source]", "Optional[Source]"] = (
+        models.ForeignKey(
+            "Source",
+            on_delete=models.SET_NULL,
+            null=True,
+            related_name="best_for",
+            blank=True,
+        )
+    )
+    cached_price: "NullableFloatField" = models.FloatField(null=True, blank=True)
     updated_at: models.DateTimeField[datetime, datetime] = models.DateTimeField(
         auto_now=True
     )
 
+    if TYPE_CHECKING:
+        from django_stubs_ext.db.models.manager import RelatedManager
+
+        sources: RelatedManager["Source"]
+
     @property
     def min_price_per_unit(self):
         if self.cached_price and datetime.now(
-            timezone.UTC
+            timezone.utc
         ) - self.updated_at <= timedelta(hours=1):
             return self.cached_price
         self.update()
         return self.cached_price
 
     @property
-    def min_url(self) -> str:
+    def min_url(self) -> Optional[str]:
         if self.cached_source and datetime.now(
-            timezone.UTC
+            timezone.utc
         ) - self.updated_at <= timedelta(hours=1):
             return self.cached_source.url
         self.update()
-        return self.cached_source.url
+        return self.cached_source.url if self.cached_source else None
 
     def update(self):
         min_source, min_price = None, None
         for src in self.sources.all():
-            if min_price is None or src.get_price() < min_price:
+            if min_price is None or (
+                src.min_price_per_unit and src.min_price_per_unit < min_price
+            ):
                 min_source = src
                 min_price = src.min_price_per_unit
         self.cached_source = min_source
@@ -54,7 +75,10 @@ class Source(models.Model):
     updated_at: models.DateTimeField[datetime, datetime] = models.DateTimeField(
         auto_now=True
     )
-    cached_price: "NullableFloatField" = models.FloatField(null=True)
+    cached_price: "NullableFloatField" = models.FloatField(null=True, blank=True)
+    cached_error: models.CharField[Optional[str], Optional[str]] = models.CharField(
+        max_length=200, null=True, blank=True
+    )
     quantity_unit: models.CharField[IngredientUnit, IngredientUnit] = models.CharField(
         max_length=4,
         choices=IngredientUnit.choices,
@@ -73,13 +97,25 @@ class Source(models.Model):
     @property
     def min_price_per_unit(self):
         if self.cached_price and datetime.now(
-            timezone.UTC
+            timezone.utc
         ) - self.updated_at <= timedelta(hours=1):
             return self.cached_price
-        if "realcanadiansuperstore" in self.url.split("."):
-            self.cached_price = (
-                scraping.from_superstore(self.url.split("/")[-1].split("?")[0])
-                / self.quantity
+
+        new_price, error = scraping.from_url(self.url)
+        now = datetime.now(timezone.utc)
+        if error:
+            self.cached_error = error
+            self.cached_price = None
+            self.updated_at = now
+            Source.objects.filter(pk=self.pk).update(cached_error=error, cached_price=None, updated_at=now)
+            print(f"Error scraping {self.url}: {error}")
+        elif new_price is not None:
+            self.cached_price = new_price / self.quantity
+            self.cached_error = None
+            self.updated_at = now
+            Source.objects.filter(pk=self.pk).update(cached_price=self.cached_price, cached_error=None, updated_at=now)
+        else:
+            print(
+                f"Scraping {self.url} had no error and no price, this should never happen"
             )
-        # todo: handle other links
         return self.cached_price

@@ -100,6 +100,11 @@ export const DayEnum = {
  */
 export type IngredientOnHand = OnHandIngredient | null;
 
+/**
+ * @nullable
+ */
+export type IngredientScraper = Scraper | null;
+
 export interface Ingredient {
   readonly id: number;
   /** @maxLength 256 */
@@ -112,6 +117,8 @@ export interface Ingredient {
   estimated_cost?: number | null;
   /** @nullable */
   readonly on_hand: IngredientOnHand;
+  /** @nullable */
+  readonly scraper: IngredientScraper;
 }
 
 export interface MealPlanEntry {
@@ -281,6 +288,24 @@ export interface PaginatedRecipeList {
   results: Recipe[];
 }
 
+export interface PaginatedScraperList {
+  count: number;
+  /** @nullable */
+  next?: string | null;
+  /** @nullable */
+  previous?: string | null;
+  results: Scraper[];
+}
+
+export interface PaginatedSourceList {
+  count: number;
+  /** @nullable */
+  next?: string | null;
+  /** @nullable */
+  previous?: string | null;
+  results: Source[];
+}
+
 export interface PaginatedTagList {
   count: number;
   /** @nullable */
@@ -295,6 +320,11 @@ export interface PaginatedTagList {
  */
 export type PatchedIngredientOnHand = OnHandIngredient | null;
 
+/**
+ * @nullable
+ */
+export type PatchedIngredientScraper = Scraper | null;
+
 export interface PatchedIngredient {
   readonly id?: number;
   /** @maxLength 256 */
@@ -307,6 +337,8 @@ export interface PatchedIngredient {
   estimated_cost?: number | null;
   /** @nullable */
   readonly on_hand?: PatchedIngredientOnHand;
+  /** @nullable */
+  readonly scraper?: PatchedIngredientScraper;
 }
 
 export interface PatchedOnHandIngredient {
@@ -362,11 +394,59 @@ export interface PatchedRecipe {
   readonly ingredients?: readonly number[];
 }
 
+export interface PatchedScraper {
+  readonly id?: number;
+  readonly cached_source?: Source;
+  readonly sources?: readonly Source[];
+  /** @nullable */
+  cached_price?: number | null;
+  readonly updated_at?: string;
+  /** @nullable */
+  ingredient?: number | null;
+}
+
+export interface PatchedSource {
+  readonly id?: number;
+  /** @maxLength 100 */
+  url?: string;
+  readonly updated_at?: string;
+  /** @nullable */
+  cached_price?: number | null;
+  /**
+   * @maxLength 200
+   * @nullable
+   */
+  cached_error?: string | null;
+  /** The base unit for the Source stats (e.g., per kg, per liter, etc.)
+
+* `kg` - Kilogram
+* `L` - Liter
+* `pc` - Piece / Count */
+  quantity_unit?: QuantityUnitEnum;
+  quantity?: number;
+  scraper?: number;
+}
+
 export interface PatchedTag {
   readonly id?: number;
   /** @maxLength 50 */
   name?: string;
 }
+
+/**
+ * * `kg` - Kilogram
+* `L` - Liter
+* `pc` - Piece / Count
+ */
+export type QuantityUnitEnum = typeof QuantityUnitEnum[keyof typeof QuantityUnitEnum];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const QuantityUnitEnum = {
+  kg: 'kg',
+  L: 'L',
+  pc: 'pc',
+} as const;
 
 export interface Recipe {
   readonly id: number;
@@ -435,6 +515,17 @@ export interface RecipeStepWrite {
   description: string;
 }
 
+export interface Scraper {
+  readonly id: number;
+  readonly cached_source: Source;
+  readonly sources: readonly Source[];
+  /** @nullable */
+  cached_price?: number | null;
+  readonly updated_at: string;
+  /** @nullable */
+  ingredient?: number | null;
+}
+
 /**
  * * `breakfast` - Breakfast
 * `lunch` - Lunch
@@ -451,6 +542,28 @@ export const SlotEnum = {
   dinner: 'dinner',
   snack: 'snack',
 } as const;
+
+export interface Source {
+  readonly id: number;
+  /** @maxLength 100 */
+  url: string;
+  readonly updated_at: string;
+  /** @nullable */
+  cached_price?: number | null;
+  /**
+   * @maxLength 200
+   * @nullable
+   */
+  cached_error?: string | null;
+  /** The base unit for the Source stats (e.g., per kg, per liter, etc.)
+
+* `kg` - Kilogram
+* `L` - Liter
+* `pc` - Piece / Count */
+  quantity_unit?: QuantityUnitEnum;
+  quantity: number;
+  scraper: number;
+}
 
 export interface Tag {
   readonly id: number;
@@ -505,6 +618,30 @@ limit?: number;
  * The initial index from which to return the results.
  */
 offset?: number;
+};
+
+export type ScrapersListParams = {
+ingredient?: number;
+/**
+ * Number of results to return per page.
+ */
+limit?: number;
+/**
+ * The initial index from which to return the results.
+ */
+offset?: number;
+};
+
+export type SourcesListParams = {
+/**
+ * Number of results to return per page.
+ */
+limit?: number;
+/**
+ * The initial index from which to return the results.
+ */
+offset?: number;
+scraper?: number;
 };
 
 export type TagsListParams = {
@@ -1984,6 +2121,856 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
       > => {
 
       const mutationOptions = getRecipesDestroyMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    
+export const scrapersList = (
+    params?: ScrapersListParams, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<PaginatedScraperList>> => {
+    
+    
+    return axios.default.get(
+      `http://localhost:8000/api/scrapers/`,{
+    ...options,
+        params: {...params, ...options?.params},}
+    );
+  }
+
+
+
+
+export const getScrapersListQueryKey = (params?: ScrapersListParams,) => {
+    return [
+    `http://localhost:8000/api/scrapers/`, ...(params ? [params]: [])
+    ] as const;
+    }
+
+    
+export const getScrapersListQueryOptions = <TData = Awaited<ReturnType<typeof scrapersList>>, TError = AxiosError<unknown>>(params?: ScrapersListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof scrapersList>>, TError, TData>>, axios?: AxiosRequestConfig}
+) => {
+
+const {query: queryOptions, axios: axiosOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getScrapersListQueryKey(params);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof scrapersList>>> = ({ signal }) => scrapersList(params, { signal, ...axiosOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof scrapersList>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ScrapersListQueryResult = NonNullable<Awaited<ReturnType<typeof scrapersList>>>
+export type ScrapersListQueryError = AxiosError<unknown>
+
+
+export function useScrapersList<TData = Awaited<ReturnType<typeof scrapersList>>, TError = AxiosError<unknown>>(
+ params: undefined |  ScrapersListParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof scrapersList>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof scrapersList>>,
+          TError,
+          Awaited<ReturnType<typeof scrapersList>>
+        > , 'initialData'
+      >, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useScrapersList<TData = Awaited<ReturnType<typeof scrapersList>>, TError = AxiosError<unknown>>(
+ params?: ScrapersListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof scrapersList>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof scrapersList>>,
+          TError,
+          Awaited<ReturnType<typeof scrapersList>>
+        > , 'initialData'
+      >, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useScrapersList<TData = Awaited<ReturnType<typeof scrapersList>>, TError = AxiosError<unknown>>(
+ params?: ScrapersListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof scrapersList>>, TError, TData>>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useScrapersList<TData = Awaited<ReturnType<typeof scrapersList>>, TError = AxiosError<unknown>>(
+ params?: ScrapersListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof scrapersList>>, TError, TData>>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getScrapersListQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+export const scrapersCreate = (
+    scraper: NonReadonly<Scraper>, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<Scraper>> => {
+    
+    
+    return axios.default.post(
+      `http://localhost:8000/api/scrapers/`,
+      scraper,options
+    );
+  }
+
+
+
+export const getScrapersCreateMutationOptions = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scrapersCreate>>, TError,{data: NonReadonly<Scraper>}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof scrapersCreate>>, TError,{data: NonReadonly<Scraper>}, TContext> => {
+
+const mutationKey = ['scrapersCreate'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof scrapersCreate>>, {data: NonReadonly<Scraper>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  scrapersCreate(data,axiosOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ScrapersCreateMutationResult = NonNullable<Awaited<ReturnType<typeof scrapersCreate>>>
+    export type ScrapersCreateMutationBody = NonReadonly<Scraper>
+    export type ScrapersCreateMutationError = AxiosError<unknown>
+
+    export const useScrapersCreate = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scrapersCreate>>, TError,{data: NonReadonly<Scraper>}, TContext>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof scrapersCreate>>,
+        TError,
+        {data: NonReadonly<Scraper>},
+        TContext
+      > => {
+
+      const mutationOptions = getScrapersCreateMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    
+export const scrapersRetrieve = (
+    id: number, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<Scraper>> => {
+    
+    
+    return axios.default.get(
+      `http://localhost:8000/api/scrapers/${id}/`,options
+    );
+  }
+
+
+
+
+export const getScrapersRetrieveQueryKey = (id?: number,) => {
+    return [
+    `http://localhost:8000/api/scrapers/${id}/`
+    ] as const;
+    }
+
+    
+export const getScrapersRetrieveQueryOptions = <TData = Awaited<ReturnType<typeof scrapersRetrieve>>, TError = AxiosError<unknown>>(id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof scrapersRetrieve>>, TError, TData>>, axios?: AxiosRequestConfig}
+) => {
+
+const {query: queryOptions, axios: axiosOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getScrapersRetrieveQueryKey(id);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof scrapersRetrieve>>> = ({ signal }) => scrapersRetrieve(id, { signal, ...axiosOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof scrapersRetrieve>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ScrapersRetrieveQueryResult = NonNullable<Awaited<ReturnType<typeof scrapersRetrieve>>>
+export type ScrapersRetrieveQueryError = AxiosError<unknown>
+
+
+export function useScrapersRetrieve<TData = Awaited<ReturnType<typeof scrapersRetrieve>>, TError = AxiosError<unknown>>(
+ id: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof scrapersRetrieve>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof scrapersRetrieve>>,
+          TError,
+          Awaited<ReturnType<typeof scrapersRetrieve>>
+        > , 'initialData'
+      >, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useScrapersRetrieve<TData = Awaited<ReturnType<typeof scrapersRetrieve>>, TError = AxiosError<unknown>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof scrapersRetrieve>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof scrapersRetrieve>>,
+          TError,
+          Awaited<ReturnType<typeof scrapersRetrieve>>
+        > , 'initialData'
+      >, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useScrapersRetrieve<TData = Awaited<ReturnType<typeof scrapersRetrieve>>, TError = AxiosError<unknown>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof scrapersRetrieve>>, TError, TData>>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useScrapersRetrieve<TData = Awaited<ReturnType<typeof scrapersRetrieve>>, TError = AxiosError<unknown>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof scrapersRetrieve>>, TError, TData>>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getScrapersRetrieveQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+export const scrapersUpdate = (
+    id: number,
+    scraper: NonReadonly<Scraper>, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<Scraper>> => {
+    
+    
+    return axios.default.put(
+      `http://localhost:8000/api/scrapers/${id}/`,
+      scraper,options
+    );
+  }
+
+
+
+export const getScrapersUpdateMutationOptions = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scrapersUpdate>>, TError,{id: number;data: NonReadonly<Scraper>}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof scrapersUpdate>>, TError,{id: number;data: NonReadonly<Scraper>}, TContext> => {
+
+const mutationKey = ['scrapersUpdate'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof scrapersUpdate>>, {id: number;data: NonReadonly<Scraper>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  scrapersUpdate(id,data,axiosOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ScrapersUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof scrapersUpdate>>>
+    export type ScrapersUpdateMutationBody = NonReadonly<Scraper>
+    export type ScrapersUpdateMutationError = AxiosError<unknown>
+
+    export const useScrapersUpdate = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scrapersUpdate>>, TError,{id: number;data: NonReadonly<Scraper>}, TContext>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof scrapersUpdate>>,
+        TError,
+        {id: number;data: NonReadonly<Scraper>},
+        TContext
+      > => {
+
+      const mutationOptions = getScrapersUpdateMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    
+export const scrapersPartialUpdate = (
+    id: number,
+    patchedScraper: NonReadonly<PatchedScraper>, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<Scraper>> => {
+    
+    
+    return axios.default.patch(
+      `http://localhost:8000/api/scrapers/${id}/`,
+      patchedScraper,options
+    );
+  }
+
+
+
+export const getScrapersPartialUpdateMutationOptions = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scrapersPartialUpdate>>, TError,{id: number;data: NonReadonly<PatchedScraper>}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof scrapersPartialUpdate>>, TError,{id: number;data: NonReadonly<PatchedScraper>}, TContext> => {
+
+const mutationKey = ['scrapersPartialUpdate'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof scrapersPartialUpdate>>, {id: number;data: NonReadonly<PatchedScraper>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  scrapersPartialUpdate(id,data,axiosOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ScrapersPartialUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof scrapersPartialUpdate>>>
+    export type ScrapersPartialUpdateMutationBody = NonReadonly<PatchedScraper>
+    export type ScrapersPartialUpdateMutationError = AxiosError<unknown>
+
+    export const useScrapersPartialUpdate = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scrapersPartialUpdate>>, TError,{id: number;data: NonReadonly<PatchedScraper>}, TContext>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof scrapersPartialUpdate>>,
+        TError,
+        {id: number;data: NonReadonly<PatchedScraper>},
+        TContext
+      > => {
+
+      const mutationOptions = getScrapersPartialUpdateMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    
+export const scrapersDestroy = (
+    id: number, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<void>> => {
+    
+    
+    return axios.default.delete(
+      `http://localhost:8000/api/scrapers/${id}/`,options
+    );
+  }
+
+
+
+export const getScrapersDestroyMutationOptions = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scrapersDestroy>>, TError,{id: number}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof scrapersDestroy>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['scrapersDestroy'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof scrapersDestroy>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  scrapersDestroy(id,axiosOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ScrapersDestroyMutationResult = NonNullable<Awaited<ReturnType<typeof scrapersDestroy>>>
+    
+    export type ScrapersDestroyMutationError = AxiosError<unknown>
+
+    export const useScrapersDestroy = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scrapersDestroy>>, TError,{id: number}, TContext>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof scrapersDestroy>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+
+      const mutationOptions = getScrapersDestroyMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    
+/**
+ * Scrape all sources, update cached_price/cached_source, return updated scraper.
+ */
+export const scrapersRefreshCreate = (
+    id: number,
+    scraper: NonReadonly<Scraper>, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<Scraper>> => {
+    
+    
+    return axios.default.post(
+      `http://localhost:8000/api/scrapers/${id}/refresh/`,
+      scraper,options
+    );
+  }
+
+
+
+export const getScrapersRefreshCreateMutationOptions = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scrapersRefreshCreate>>, TError,{id: number;data: NonReadonly<Scraper>}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof scrapersRefreshCreate>>, TError,{id: number;data: NonReadonly<Scraper>}, TContext> => {
+
+const mutationKey = ['scrapersRefreshCreate'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof scrapersRefreshCreate>>, {id: number;data: NonReadonly<Scraper>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  scrapersRefreshCreate(id,data,axiosOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ScrapersRefreshCreateMutationResult = NonNullable<Awaited<ReturnType<typeof scrapersRefreshCreate>>>
+    export type ScrapersRefreshCreateMutationBody = NonReadonly<Scraper>
+    export type ScrapersRefreshCreateMutationError = AxiosError<unknown>
+
+    export const useScrapersRefreshCreate = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scrapersRefreshCreate>>, TError,{id: number;data: NonReadonly<Scraper>}, TContext>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof scrapersRefreshCreate>>,
+        TError,
+        {id: number;data: NonReadonly<Scraper>},
+        TContext
+      > => {
+
+      const mutationOptions = getScrapersRefreshCreateMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    
+export const sourcesList = (
+    params?: SourcesListParams, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<PaginatedSourceList>> => {
+    
+    
+    return axios.default.get(
+      `http://localhost:8000/api/sources/`,{
+    ...options,
+        params: {...params, ...options?.params},}
+    );
+  }
+
+
+
+
+export const getSourcesListQueryKey = (params?: SourcesListParams,) => {
+    return [
+    `http://localhost:8000/api/sources/`, ...(params ? [params]: [])
+    ] as const;
+    }
+
+    
+export const getSourcesListQueryOptions = <TData = Awaited<ReturnType<typeof sourcesList>>, TError = AxiosError<unknown>>(params?: SourcesListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sourcesList>>, TError, TData>>, axios?: AxiosRequestConfig}
+) => {
+
+const {query: queryOptions, axios: axiosOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSourcesListQueryKey(params);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof sourcesList>>> = ({ signal }) => sourcesList(params, { signal, ...axiosOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof sourcesList>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type SourcesListQueryResult = NonNullable<Awaited<ReturnType<typeof sourcesList>>>
+export type SourcesListQueryError = AxiosError<unknown>
+
+
+export function useSourcesList<TData = Awaited<ReturnType<typeof sourcesList>>, TError = AxiosError<unknown>>(
+ params: undefined |  SourcesListParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof sourcesList>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof sourcesList>>,
+          TError,
+          Awaited<ReturnType<typeof sourcesList>>
+        > , 'initialData'
+      >, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSourcesList<TData = Awaited<ReturnType<typeof sourcesList>>, TError = AxiosError<unknown>>(
+ params?: SourcesListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sourcesList>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof sourcesList>>,
+          TError,
+          Awaited<ReturnType<typeof sourcesList>>
+        > , 'initialData'
+      >, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSourcesList<TData = Awaited<ReturnType<typeof sourcesList>>, TError = AxiosError<unknown>>(
+ params?: SourcesListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sourcesList>>, TError, TData>>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useSourcesList<TData = Awaited<ReturnType<typeof sourcesList>>, TError = AxiosError<unknown>>(
+ params?: SourcesListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sourcesList>>, TError, TData>>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getSourcesListQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+export const sourcesCreate = (
+    source: NonReadonly<Source>, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<Source>> => {
+    
+    
+    return axios.default.post(
+      `http://localhost:8000/api/sources/`,
+      source,options
+    );
+  }
+
+
+
+export const getSourcesCreateMutationOptions = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sourcesCreate>>, TError,{data: NonReadonly<Source>}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof sourcesCreate>>, TError,{data: NonReadonly<Source>}, TContext> => {
+
+const mutationKey = ['sourcesCreate'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sourcesCreate>>, {data: NonReadonly<Source>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  sourcesCreate(data,axiosOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SourcesCreateMutationResult = NonNullable<Awaited<ReturnType<typeof sourcesCreate>>>
+    export type SourcesCreateMutationBody = NonReadonly<Source>
+    export type SourcesCreateMutationError = AxiosError<unknown>
+
+    export const useSourcesCreate = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sourcesCreate>>, TError,{data: NonReadonly<Source>}, TContext>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof sourcesCreate>>,
+        TError,
+        {data: NonReadonly<Source>},
+        TContext
+      > => {
+
+      const mutationOptions = getSourcesCreateMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    
+export const sourcesRetrieve = (
+    id: number, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<Source>> => {
+    
+    
+    return axios.default.get(
+      `http://localhost:8000/api/sources/${id}/`,options
+    );
+  }
+
+
+
+
+export const getSourcesRetrieveQueryKey = (id?: number,) => {
+    return [
+    `http://localhost:8000/api/sources/${id}/`
+    ] as const;
+    }
+
+    
+export const getSourcesRetrieveQueryOptions = <TData = Awaited<ReturnType<typeof sourcesRetrieve>>, TError = AxiosError<unknown>>(id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sourcesRetrieve>>, TError, TData>>, axios?: AxiosRequestConfig}
+) => {
+
+const {query: queryOptions, axios: axiosOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSourcesRetrieveQueryKey(id);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof sourcesRetrieve>>> = ({ signal }) => sourcesRetrieve(id, { signal, ...axiosOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof sourcesRetrieve>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type SourcesRetrieveQueryResult = NonNullable<Awaited<ReturnType<typeof sourcesRetrieve>>>
+export type SourcesRetrieveQueryError = AxiosError<unknown>
+
+
+export function useSourcesRetrieve<TData = Awaited<ReturnType<typeof sourcesRetrieve>>, TError = AxiosError<unknown>>(
+ id: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof sourcesRetrieve>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof sourcesRetrieve>>,
+          TError,
+          Awaited<ReturnType<typeof sourcesRetrieve>>
+        > , 'initialData'
+      >, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSourcesRetrieve<TData = Awaited<ReturnType<typeof sourcesRetrieve>>, TError = AxiosError<unknown>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sourcesRetrieve>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof sourcesRetrieve>>,
+          TError,
+          Awaited<ReturnType<typeof sourcesRetrieve>>
+        > , 'initialData'
+      >, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSourcesRetrieve<TData = Awaited<ReturnType<typeof sourcesRetrieve>>, TError = AxiosError<unknown>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sourcesRetrieve>>, TError, TData>>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useSourcesRetrieve<TData = Awaited<ReturnType<typeof sourcesRetrieve>>, TError = AxiosError<unknown>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof sourcesRetrieve>>, TError, TData>>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getSourcesRetrieveQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+export const sourcesUpdate = (
+    id: number,
+    source: NonReadonly<Source>, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<Source>> => {
+    
+    
+    return axios.default.put(
+      `http://localhost:8000/api/sources/${id}/`,
+      source,options
+    );
+  }
+
+
+
+export const getSourcesUpdateMutationOptions = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sourcesUpdate>>, TError,{id: number;data: NonReadonly<Source>}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof sourcesUpdate>>, TError,{id: number;data: NonReadonly<Source>}, TContext> => {
+
+const mutationKey = ['sourcesUpdate'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sourcesUpdate>>, {id: number;data: NonReadonly<Source>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  sourcesUpdate(id,data,axiosOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SourcesUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof sourcesUpdate>>>
+    export type SourcesUpdateMutationBody = NonReadonly<Source>
+    export type SourcesUpdateMutationError = AxiosError<unknown>
+
+    export const useSourcesUpdate = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sourcesUpdate>>, TError,{id: number;data: NonReadonly<Source>}, TContext>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof sourcesUpdate>>,
+        TError,
+        {id: number;data: NonReadonly<Source>},
+        TContext
+      > => {
+
+      const mutationOptions = getSourcesUpdateMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    
+export const sourcesPartialUpdate = (
+    id: number,
+    patchedSource: NonReadonly<PatchedSource>, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<Source>> => {
+    
+    
+    return axios.default.patch(
+      `http://localhost:8000/api/sources/${id}/`,
+      patchedSource,options
+    );
+  }
+
+
+
+export const getSourcesPartialUpdateMutationOptions = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sourcesPartialUpdate>>, TError,{id: number;data: NonReadonly<PatchedSource>}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof sourcesPartialUpdate>>, TError,{id: number;data: NonReadonly<PatchedSource>}, TContext> => {
+
+const mutationKey = ['sourcesPartialUpdate'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sourcesPartialUpdate>>, {id: number;data: NonReadonly<PatchedSource>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  sourcesPartialUpdate(id,data,axiosOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SourcesPartialUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof sourcesPartialUpdate>>>
+    export type SourcesPartialUpdateMutationBody = NonReadonly<PatchedSource>
+    export type SourcesPartialUpdateMutationError = AxiosError<unknown>
+
+    export const useSourcesPartialUpdate = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sourcesPartialUpdate>>, TError,{id: number;data: NonReadonly<PatchedSource>}, TContext>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof sourcesPartialUpdate>>,
+        TError,
+        {id: number;data: NonReadonly<PatchedSource>},
+        TContext
+      > => {
+
+      const mutationOptions = getSourcesPartialUpdateMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    
+export const sourcesDestroy = (
+    id: number, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<void>> => {
+    
+    
+    return axios.default.delete(
+      `http://localhost:8000/api/sources/${id}/`,options
+    );
+  }
+
+
+
+export const getSourcesDestroyMutationOptions = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sourcesDestroy>>, TError,{id: number}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof sourcesDestroy>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['sourcesDestroy'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sourcesDestroy>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  sourcesDestroy(id,axiosOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SourcesDestroyMutationResult = NonNullable<Awaited<ReturnType<typeof sourcesDestroy>>>
+    
+    export type SourcesDestroyMutationError = AxiosError<unknown>
+
+    export const useSourcesDestroy = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sourcesDestroy>>, TError,{id: number}, TContext>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof sourcesDestroy>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+
+      const mutationOptions = getSourcesDestroyMutationOptions(options);
 
       return useMutation(mutationOptions, queryClient);
     }
