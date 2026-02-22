@@ -1,5 +1,8 @@
 import requests
 from typing import Optional
+from bs4 import BeautifulSoup
+import json
+from typing import Any
 
 ScrapingReturn = tuple[Optional[float], Optional[str]]
 # The above type is (price per unit, error message). Price and error are mutually exclusive
@@ -9,7 +12,41 @@ def from_url(url: str) -> ScrapingReturn:
     if "realcanadiansuperstore" in url.split("."):
         code = url.split("/")[-1].split("?")[0]
         return from_superstore(code)
-    return (None, "Unsupported Source")
+    return try_schema_org_product(url)
+
+
+def try_schema_org_product(url: str) -> ScrapingReturn:
+    headers = {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+        "DNT": "1",
+    }
+
+    # as a fallback, see if the page contains schema.org product data that we can parse
+    response = requests.get(url, headers=headers, timeout=10)
+    if response.status_code != 200:
+        return (None, f"Failed to reach the URL: {response.status_code}")
+    soup = BeautifulSoup(response.text, "html.parser")
+    tag = soup.find("script", {"type": "application/ld+json"})
+    if not tag:
+        print(response.text)
+        return (None, "Unsupported Source (code 1)")
+
+    try:
+        data: dict[str, Any] | list[Any] = json.loads(tag.string or "")
+        while isinstance(data, list):
+            data = data[0]
+        offers: dict[str, Any] | list[dict[str, Any]] = data.get("offers", {})
+        if isinstance(offers, list):
+            offers = offers[0]
+        price = offers.get("price")
+        if price is not None:
+            return (float(price), None)
+        else:
+            return (None, "Unsupported Source (code 2)")
+    except json.JSONDecodeError:
+        return (None, "Unsupported Source (code 3)")
 
 
 def from_superstore(code: str) -> ScrapingReturn:
