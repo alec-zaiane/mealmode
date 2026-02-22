@@ -2,7 +2,9 @@ from django.db import models
 from scraper import scraping
 from datetime import datetime, timedelta, timezone
 
-from api.models import IngredientUnit
+from django.utils.translation import gettext_lazy as _
+
+from api.models import IngredientUnit, Ingredient
 
 from typing import TYPE_CHECKING, Optional
 
@@ -107,15 +109,79 @@ class Source(models.Model):
             self.cached_error = error
             self.cached_price = None
             self.updated_at = now
-            Source.objects.filter(pk=self.pk).update(cached_error=error, cached_price=None, updated_at=now)
+            Source.objects.filter(pk=self.pk).update(
+                cached_error=error, cached_price=None, updated_at=now
+            )
             print(f"Error scraping {self.url}: {error}")
         elif new_price is not None:
             self.cached_price = new_price / self.quantity
             self.cached_error = None
             self.updated_at = now
-            Source.objects.filter(pk=self.pk).update(cached_price=self.cached_price, cached_error=None, updated_at=now)
+            Source.objects.filter(pk=self.pk).update(
+                cached_price=self.cached_price, cached_error=None, updated_at=now
+            )
         else:
             print(
                 f"Scraping {self.url} had no error and no price, this should never happen"
             )
         return self.cached_price
+
+
+# ConfirmableRecipe stuff is for recipes that need to be confirmed by the user before being added to the actual Recipe model
+# because we might be wrong in matching certain details
+
+
+class ConfirmableRecipeIngredient(models.Model):
+    confirmable_recipe: "models.ForeignKey[ConfirmableRecipe]" = models.ForeignKey(
+        "ConfirmableRecipe",
+        on_delete=models.CASCADE,
+        related_name="ingredients_list",
+    )
+    source_text: models.CharField[str, str] = models.CharField(max_length=200)
+    best_guess_ingredient: models.ForeignKey[
+        Optional[Ingredient], Optional[Ingredient]
+    ] = models.ForeignKey(Ingredient, on_delete=models.SET_NULL, null=True, blank=True)
+    confidence: models.FloatField[float, float] = models.FloatField()
+    quantity: models.FloatField[float, float] = models.FloatField(
+        help_text=_(
+            "Quantity in base units (e.g., grams, liters, pieces), defined by the ingredient's nutrition stats)"
+        )
+    )
+
+
+class ConfirmableRecipeStep(models.Model):
+    confirmable_recipe: "models.ForeignKey[ConfirmableRecipe]" = models.ForeignKey(
+        "ConfirmableRecipe",
+        on_delete=models.CASCADE,
+        related_name="steps_list",
+    )
+    step_number: models.IntegerField[int, int] = models.IntegerField()
+    description: models.TextField[str, str] = models.TextField()
+
+
+class ConfirmableRecipe(models.Model):
+    name: models.CharField[str, str] = models.CharField(max_length=100)
+    ingredients: models.ManyToManyField[
+        ConfirmableRecipeIngredient, ConfirmableRecipeIngredient
+    ] = models.ManyToManyField(ConfirmableRecipeIngredient, blank=True)
+    steps: models.ManyToManyField[ConfirmableRecipeStep, ConfirmableRecipeStep] = (
+        models.ManyToManyField(ConfirmableRecipeStep, blank=True)
+    )
+    source_url: models.CharField[Optional[str], Optional[str]] = models.CharField(
+        max_length=200, blank=True
+    )
+    cook_time_minutes: models.IntegerField[Optional[int], Optional[int]] = (
+        models.IntegerField(null=True, blank=True)
+    )
+    prep_time_minutes: models.IntegerField[Optional[int], Optional[int]] = (
+        models.IntegerField(null=True, blank=True)
+    )
+    servings: models.IntegerField[Optional[int], Optional[int]] = models.IntegerField(
+        null=True, blank=True
+    )
+
+    if TYPE_CHECKING:
+        from django_stubs_ext.db.models.manager import RelatedManager
+
+        ingredients_list: RelatedManager[ConfirmableRecipeIngredient]
+        steps_list: RelatedManager[ConfirmableRecipeStep]
