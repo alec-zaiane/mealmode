@@ -144,7 +144,10 @@ class StageOne:
     @staticmethod
     def load_recipe_stage_one(url: str) -> RecipeLoadingStageOneResult:
         # Step 1: Scan the site for a recipe schema, and if found, extract recipe information from it.
-        response = requests.get(url)
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+        }
+        response = requests.get(url, headers=headers, timeout=10)
         soup = BeautifulSoup(response.content, "html.parser")
 
         # Look for a script tag with type "application/ld+json"
@@ -376,7 +379,6 @@ class StageTwo:
             source_url=source_url,
             prep_time_minutes=recipe_draft.prep_time_minutes,
             cook_time_minutes=recipe_draft.cook_time_minutes,
-            description=recipe_draft.description or "",
         )
 
         for ingredient_match in recipe_draft.ingredients:
