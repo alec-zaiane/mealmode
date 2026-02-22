@@ -24,6 +24,8 @@ class RecipeViewSet(viewsets.ModelViewSet[models.Recipe]):
 class TagViewSet(viewsets.ModelViewSet[models.RecipeTag]):
     queryset = models.RecipeTag.objects.all()
     serializer_class = serializers.TagSerializer
+    filter_backends = [SearchFilter]
+    search_fields = ["name"]
 
 
 class MealPlanEntryViewSet(viewsets.ModelViewSet[models.MealPlanEntry]):

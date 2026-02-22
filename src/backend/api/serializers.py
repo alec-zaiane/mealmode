@@ -73,6 +73,12 @@ class RecipeSerializer(serializers.ModelSerializer[models.Recipe]):
     recipe_steps = RecipeStepWriteSerializer(many=True, required=False, write_only=True)
     tags = TagSerializer(many=True, read_only=True)
     steps = RecipeStepSerializer(many=True, read_only=True)
+    tag_ids = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=models.RecipeTag.objects.all(),
+        required=False,
+        write_only=True,
+    )
 
     class Meta:  # type: ignore
         model = models.Recipe
@@ -81,10 +87,13 @@ class RecipeSerializer(serializers.ModelSerializer[models.Recipe]):
     def create(self, validated_data: dict[str, Any]):
         recipe_ingredients = validated_data.pop("recipe_ingredients", [])
         recipe_steps = validated_data.pop("recipe_steps", [])
+        tag_ids = validated_data.pop("tag_ids", None)
         validated_data.pop(
             "ingredients", None
         )  # M2M through RecipeIngredient; set below
         recipe = models.Recipe.objects.create(**validated_data)
+        if tag_ids is not None:
+            recipe.tags.set(tag_ids)
         for item in recipe_ingredients:
             models.RecipeIngredient.objects.create(
                 recipe=recipe,
@@ -102,10 +111,13 @@ class RecipeSerializer(serializers.ModelSerializer[models.Recipe]):
     def update(self, instance: "models.Recipe", validated_data: dict[str, Any]):
         recipe_ingredients = validated_data.pop("recipe_ingredients", None)
         recipe_steps = validated_data.pop("recipe_steps", None)
+        tag_ids = validated_data.pop("tag_ids", None)
         validated_data.pop("ingredients", None)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
+        if tag_ids is not None:
+            instance.tags.set(tag_ids)
         if recipe_ingredients is not None:
             instance.ingredients_list.all().delete()
             for item in recipe_ingredients:

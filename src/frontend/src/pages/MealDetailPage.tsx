@@ -1,10 +1,9 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { useRecipesRetrieve, useRecipesPartialUpdate, useIngredientsList, getRecipesRetrieveQueryKey, getRecipesListQueryKey } from '../api/mealmodeAPI';
-import type { Recipe, RecipeIngredient } from '../api/mealmodeAPI';
-import type { Ingredient } from '../api/mealmodeAPI';
-import { Users, DollarSign, Pencil, Plus, X, ChevronDown } from 'lucide-react';
+import { useRecipesRetrieve, useRecipesPartialUpdate, useIngredientsList, getRecipesRetrieveQueryKey, getRecipesListQueryKey, useTagsList, getTagsListQueryKey, useTagsCreate, useTagsDestroy } from '../api/mealmodeAPI';
+import type { Recipe, RecipeIngredient, Tag, Ingredient } from '../api/mealmodeAPI';
+import { Users, DollarSign, Pencil, Plus, X, ChevronDown, Trash2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
@@ -26,6 +25,7 @@ import { calculateRecipeCost, calculateRecipeNutrition } from '../utils/calculat
 
 import { NutritionLabel } from '../components/nutritionLabel';
 import { Breadcrumbs } from '../components/Breadcrumbs';
+import { Badge } from '../components/ui/badge';
 
 function ingredientUnitLabel(ing: Ingredient): string {
   const u = ing.nutrition_stats?.base_unit;
@@ -33,6 +33,177 @@ function ingredientUnitLabel(ing: Ingredient): string {
   if (u === 'L') return 'L';
   if (u === 'pc') return 'pc';
   return '—';
+}
+
+function RecipeTagsCard({ recipe }: { recipe: Recipe }) {
+  const queryClient = useQueryClient();
+  const [tagSearch, setTagSearch] = useState('');
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+
+  // Fetch all tags (limit high, filter client-side — tag lists are small)
+  const { data: allTagsResponse } = useTagsList({ limit: 200 });
+  const allTags: Tag[] = (allTagsResponse?.data as { results?: Tag[] })?.results ?? [];
+
+  const currentTagIds = new Set(recipe.tags.map((t) => t.id));
+  const searchLower = tagSearch.trim().toLowerCase();
+  const filteredTags = searchLower
+    ? allTags.filter((t) => t.name.toLowerCase().includes(searchLower))
+    : allTags;
+  const availableTags = filteredTags.filter((t) => !currentTagIds.has(t.id));
+  const exactMatch = allTags.some((t) => t.name.toLowerCase() === searchLower);
+  const canCreateNew = searchLower.length > 0 && !exactMatch;
+
+  const invalidateTags = () => {
+    queryClient.invalidateQueries({ queryKey: getTagsListQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getRecipesRetrieveQueryKey(recipe.id) });
+    queryClient.invalidateQueries({ queryKey: getRecipesListQueryKey() });
+  };
+
+  const updateRecipe = useRecipesPartialUpdate({
+    mutation: { onSuccess: invalidateTags },
+  });
+
+  const createTag = useTagsCreate();
+  const destroyTag = useTagsDestroy({ mutation: { onSuccess: invalidateTags } });
+
+  const setRecipeTags = (tagIds: number[]) => {
+    updateRecipe.mutate({
+      id: recipe.id,
+      data: { tag_ids: tagIds } as never,
+    });
+  };
+
+  const addTag = (tagId: number) => {
+    setTagSearch('');
+    setRecipeTags([...recipe.tags.map((t) => t.id), tagId]);
+  };
+
+  const removeTag = (tagId: number) => {
+    setRecipeTags(recipe.tags.filter((t) => t.id !== tagId).map((t) => t.id));
+  };
+
+  const handleCreateAndAdd = () => {
+    if (!tagSearch.trim()) return;
+    createTag.mutate(
+      { data: { name: tagSearch.trim() } },
+      {
+        onSuccess: (resp) => {
+          const newTag = (resp as { data?: Tag })?.data;
+          if (newTag?.id != null) {
+            setTagSearch('');
+            setRecipeTags([...recipe.tags.map((t) => t.id), newTag.id]);
+            queryClient.invalidateQueries({ queryKey: getTagsListQueryKey() });
+          }
+        },
+      }
+    );
+  };
+
+  const handleDeleteTag = (tagId: number) => {
+    destroyTag.mutate({ id: tagId });
+    setDeleteConfirmId(null);
+  };
+
+  return (
+    <Card className="p-4">
+      <CardHeader>
+        <CardTitle>Tags</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {/* Current recipe tags */}
+        <div className="flex flex-wrap gap-2 mb-3">
+          {recipe.tags.length === 0 && !tagSearch && (
+            <p className="text-sm text-palette-slate">No tags for this recipe.</p>
+          )}
+          {recipe.tags.map((tag) => (
+            <Badge key={tag.id} variant="secondary" className="text-xs gap-1 pr-1 items-center">
+              {tag.name}
+              <button
+                type="button"
+                onClick={() => removeTag(tag.id)}
+                className="ml-0.5 rounded-full hover:bg-palette-mist p-0.5"
+                aria-label={`Remove tag ${tag.name}`}
+              >
+                <X className="w-2.5 h-2.5" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+
+        {/* Search / add tags */}
+        <div className="relative">
+          <Input
+            placeholder="Search or add tags…"
+            value={tagSearch}
+            onChange={(e) => { setTagSearch(e.target.value); setDeleteConfirmId(null); }}
+            className="h-8 text-sm"
+          />
+          {tagSearch.trim() && (
+            <div className="absolute z-10 top-full left-0 right-0 mt-1 border border-palette-mist rounded-md bg-white shadow-lg max-h-52 overflow-y-auto">
+              {canCreateNew && (
+                <button
+                  type="button"
+                  onClick={handleCreateAndAdd}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-palette-mist flex items-center gap-2 text-palette-taupe border-b border-palette-mist"
+                >
+                  <Plus className="w-3 h-3 shrink-0" />
+                  Create &amp; add &ldquo;{tagSearch.trim()}&rdquo;
+                </button>
+              )}
+              {availableTags.length === 0 && !canCreateNew && (
+                <p className="px-3 py-2 text-sm text-palette-slate">No more tags found.</p>
+              )}
+              {availableTags.map((tag) => (
+                <div key={tag.id} className="flex items-center group">
+                  {deleteConfirmId === tag.id ? (
+                    <div className="flex items-center gap-2 px-3 py-1.5 w-full text-sm">
+                      <span className="flex-1 text-red-600">Delete &ldquo;{tag.name}&rdquo; globally?</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs text-red-600 hover:bg-red-50"
+                        onClick={() => handleDeleteTag(tag.id)}
+                      >
+                        Yes
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => setDeleteConfirmId(null)}
+                      >
+                        No
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => addTag(tag.id)}
+                        className="flex-1 text-left px-3 py-1.5 text-sm hover:bg-palette-mist"
+                      >
+                        {tag.name}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(tag.id); }}
+                        className="px-2 py-1.5 text-palette-slate opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity"
+                        aria-label={`Delete tag ${tag.name}`}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 type SelectedIngredient = { ingredientId: number; quantity: number; name: string; unit: string };
@@ -121,11 +292,11 @@ export function MealDetailPage() {
     setEditIngredients(
       recipe.ingredients_list?.length
         ? recipe.ingredients_list.map((ri) => ({
-            ingredientId: ri.ingredient.id,
-            quantity: ri.quantity,
-            name: ri.ingredient.name,
-            unit: ingredientUnitLabel(ri.ingredient),
-          }))
+          ingredientId: ri.ingredient.id,
+          quantity: ri.quantity,
+          name: ri.ingredient.name,
+          unit: ingredientUnitLabel(ri.ingredient),
+        }))
         : []
     );
     setEditIngredientSearch('');
@@ -413,6 +584,8 @@ export function MealDetailPage() {
               </div>
             </CardContent>
           </Card>
+
+          <RecipeTagsCard recipe={recipe} />
 
           <Card>
             <CardHeader>
