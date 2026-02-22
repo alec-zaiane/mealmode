@@ -1,4 +1,4 @@
-FROM ghcr.io/astral-sh/uv:alpine
+FROM --platform=$BUILDPLATFORM ghcr.io/astral-sh/uv:alpine
 
 RUN apk add --no-cache tzdata
 WORKDIR /app/backend

@@ -73,11 +73,13 @@ class RecipeSerializer(serializers.ModelSerializer[models.Recipe]):
     recipe_steps = RecipeStepWriteSerializer(many=True, required=False, write_only=True)
     tags = TagSerializer(many=True, read_only=True)
     steps = RecipeStepSerializer(many=True, read_only=True)
-    tag_ids = serializers.PrimaryKeyRelatedField(
-        many=True,
-        queryset=models.RecipeTag.objects.all(),
-        required=False,
-        write_only=True,
+    tag_ids: serializers.PrimaryKeyRelatedField[models.RecipeTag] = (  # type: ignore[assignment]
+        serializers.PrimaryKeyRelatedField(
+            many=True,
+            queryset=models.RecipeTag.objects.all(),
+            required=False,
+            write_only=True,
+        )
     )
 
     class Meta:  # type: ignore
