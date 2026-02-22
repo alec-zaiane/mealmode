@@ -44,29 +44,27 @@ export function DialogTrigger({
   );
 }
 
-export interface DialogContentProps {
-  className?: string;
-  children: ReactNode;
-  onClose?: () => void;
-}
-
 export function DialogContent({
   className = '',
   children,
   onClose,
-}: DialogContentProps) {
+}: {
+  className?: string;
+  children: ReactNode;
+  onClose?: () => void;
+}) {
   const ctx = useContext(DialogContext);
   if (!ctx || !ctx.open) return null;
   return (
     <>
       <div
-        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-200"
+        className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm transition-all"
         onClick={() => { ctx.setOpen(false); onClose?.(); }}
         aria-hidden
       />
       <div
         role="dialog"
-        className={`fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-palette-mist/60 bg-white p-6 shadow-dialog ${className}`}
+        className={`fixed left-1/2 top-1/2 z-[100] w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-palette-border/60 bg-white p-8 shadow-glass transition-all ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
         {children}
@@ -76,9 +74,9 @@ export function DialogContent({
 }
 
 export function DialogHeader({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`mb-4 ${className}`}>{children}</div>;
+  return <div className={`mb-6 ${className}`}>{children}</div>;
 }
 
-export function DialogTitle({ children }: { children: ReactNode }) {
-  return <h2 className="font-brand text-lg font-semibold text-palette-taupe">{children}</h2>;
+export function DialogTitle({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return <h2 className={`text-2xl font-brand font-bold text-palette-text tracking-tight ${className}`}>{children}</h2>;
 }

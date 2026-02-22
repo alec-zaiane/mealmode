@@ -3,14 +3,28 @@
 @tailwind utilities;
 
 @layer base {
-  html {
-    scroll-behavior: smooth;
+  * {
+    -webkit-tap-highlight-color: transparent;
   }
+
+  input:focus,
+  input:focus-visible,
+  textarea:focus,
+  textarea:focus-visible,
+  select:focus,
+  select:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
+  input:focus-within,
+  textarea:focus-within,
+  select:focus-within {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
   body {
-    @apply text-palette-taupe antialiased;
-  }
-  /* Consistent focus ring for keyboard nav */
-  :focus-visible {
-    @apply outline-none ring-2 ring-palette-terracotta ring-offset-2 ring-offset-white;
+    @apply bg-palette-background text-palette-text antialiased selection:bg-palette-primary/20 selection:text-palette-primaryDark;
   }
 }

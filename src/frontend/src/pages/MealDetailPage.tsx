@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { useRecipesRetrieve, useRecipesPartialUpdate, useRecipesDestroy, useIngredientsList, getRecipesRetrieveQueryKey, getRecipesListQueryKey, useTagsList, getTagsListQueryKey, useTagsCreate, useTagsDestroy } from '../api/mealmodeAPI';
+import { useRecipesRetrieve, useRecipesPartialUpdate, useIngredientsList, getRecipesRetrieveQueryKey, getRecipesListQueryKey, useTagsList, getTagsListQueryKey, useTagsCreate, useTagsDestroy } from '../api/mealmodeAPI';
 import type { Recipe, RecipeIngredient, Tag, Ingredient } from '../api/mealmodeAPI';
 import { Users, DollarSign, Pencil, Plus, X, ChevronDown, Trash2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -25,8 +25,6 @@ import { calculateRecipeCost, calculateRecipeNutrition } from '../utils/calculat
 
 import { NutritionLabel } from '../components/nutritionLabel';
 import { Breadcrumbs } from '../components/Breadcrumbs';
-import { useToast } from '../context/ToastContext';
-import { Skeleton } from '../components/ui/skeleton';
 import { Badge } from '../components/ui/badge';
 
 function ingredientUnitLabel(ing: Ingredient): string {
@@ -115,7 +113,7 @@ function RecipeTagsCard({ recipe }: { recipe: Recipe }) {
         {/* Current recipe tags */}
         <div className="flex flex-wrap gap-2 mb-3">
           {recipe.tags.length === 0 && !tagSearch && (
-            <p className="text-sm text-palette-slate">No tags for this recipe.</p>
+            <p className="text-sm text-palette-textMuted">No tags for this recipe.</p>
           )}
           {recipe.tags.map((tag) => (
             <Badge key={tag.id} variant="secondary" className="text-xs gap-1 pr-1 items-center">
@@ -123,7 +121,7 @@ function RecipeTagsCard({ recipe }: { recipe: Recipe }) {
               <button
                 type="button"
                 onClick={() => removeTag(tag.id)}
-                className="ml-0.5 rounded-full hover:bg-palette-mist p-0.5"
+                className="ml-0.5 rounded-full hover:bg-gray-100/50 p-0.5"
                 aria-label={`Remove tag ${tag.name}`}
               >
                 <X className="w-2.5 h-2.5" />
@@ -141,19 +139,19 @@ function RecipeTagsCard({ recipe }: { recipe: Recipe }) {
             className="h-8 text-sm"
           />
           {tagSearch.trim() && (
-            <div className="absolute z-10 top-full left-0 right-0 mt-1 border border-palette-mist rounded-md bg-white shadow-lg max-h-52 overflow-y-auto">
+            <div className="absolute z-10 top-full left-0 right-0 mt-1 border border-palette-border rounded-md bg-white shadow-lg max-h-52 overflow-y-auto">
               {canCreateNew && (
                 <button
                   type="button"
                   onClick={handleCreateAndAdd}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-palette-mist flex items-center gap-2 text-palette-taupe border-b border-palette-mist"
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100/50 flex items-center gap-2 text-palette-text border-b border-palette-border"
                 >
                   <Plus className="w-3 h-3 shrink-0" />
                   Create &amp; add &ldquo;{tagSearch.trim()}&rdquo;
                 </button>
               )}
               {availableTags.length === 0 && !canCreateNew && (
-                <p className="px-3 py-2 text-sm text-palette-slate">No more tags found.</p>
+                <p className="px-3 py-2 text-sm text-palette-textMuted">No more tags found.</p>
               )}
               {availableTags.map((tag) => (
                 <div key={tag.id} className="flex items-center group">
@@ -184,14 +182,14 @@ function RecipeTagsCard({ recipe }: { recipe: Recipe }) {
                       <button
                         type="button"
                         onClick={() => addTag(tag.id)}
-                        className="flex-1 text-left px-3 py-1.5 text-sm hover:bg-palette-mist"
+                        className="flex-1 text-left px-3 py-1.5 text-sm hover:bg-gray-100/50"
                       >
                         {tag.name}
                       </button>
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(tag.id); }}
-                        className="px-2 py-1.5 text-palette-slate opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity"
+                        className="px-2 py-1.5 text-palette-textMuted opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity"
                         aria-label={`Delete tag ${tag.name}`}
                       >
                         <Trash2 className="w-3 h-3" />
@@ -276,25 +274,12 @@ export function MealDetailPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [editIngredientDropdownOpen]);
 
-  const toast = useToast();
-  const [deleteRecipeConfirm, setDeleteRecipeConfirm] = useState(false);
   const updateRecipe = useRecipesPartialUpdate({
     mutation: {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getRecipesRetrieveQueryKey(numericId) });
         queryClient.invalidateQueries({ queryKey: getRecipesListQueryKey() });
-        toast('Recipe saved');
         setEditDialogOpen(false);
-      },
-    },
-  });
-  const destroyRecipe = useRecipesDestroy({
-    mutation: {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getRecipesListQueryKey() });
-        toast('Recipe deleted');
-        setDeleteRecipeConfirm(false);
-        navigate('/', { replace: true });
       },
     },
   });
@@ -362,29 +347,14 @@ export function MealDetailPage() {
       <div className="space-y-4">
         <Breadcrumbs items={[{ label: 'Meals', href: '/' }]} />
         <div className="text-center py-12">
-          <p className="text-palette-taupe">Invalid recipe</p>
+          <p className="text-palette-text">Invalid recipe</p>
         </div>
       </div>
     );
   }
 
   if (isLoading) {
-    return (
-      <div>
-        <div className="mb-6">
-          <Breadcrumbs items={[{ label: 'Meals', href: '/' }]} />
-          <div className="flex items-start justify-between gap-4 mt-2">
-            <Skeleton className="h-9 w-64" />
-            <Skeleton className="h-10 w-28" />
-          </div>
-        </div>
-        <div className="space-y-4">
-          <Skeleton className="h-6 w-full max-w-md" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-48 w-full" />
-        </div>
-      </div>
-    );
+    return <div className="text-center py-12 text-palette-textMuted">Loading…</div>;
   }
 
   if (isError || !recipe) {
@@ -392,7 +362,7 @@ export function MealDetailPage() {
       <div className="space-y-4">
         <Breadcrumbs items={[{ label: 'Meals', href: '/' }]} />
         <div className="text-center py-12">
-          <p className="text-palette-taupe">Meal not found</p>
+          <p className="text-palette-text">Meal not found</p>
         </div>
       </div>
     );
@@ -409,25 +379,15 @@ export function MealDetailPage() {
         />
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-3xl font-semibold text-palette-taupe mb-2">{recipe.name}</h2>
+            <h2 className="text-3xl font-semibold text-palette-text mb-2">{recipe.name}</h2>
           </div>
           <div className="text-right flex flex-col items-end gap-2">
-            <div className="flex items-center gap-2">
-              <Button onClick={openEditDialog}>
-                <Pencil className="w-4 h-4 mr-2" />
-                Edit meal
-              </Button>
-              <Button
-                variant="outline"
-                className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
-                onClick={() => setDeleteRecipeConfirm(true)}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete recipe
-              </Button>
-            </div>
+            <Button onClick={openEditDialog}>
+              <Pencil className="w-4 h-4 mr-2" />
+              Edit meal
+            </Button>
             {costData && (
-              <div className="flex items-center gap-2 text-palette-slate text-xl">
+              <div className="flex items-center gap-2 text-palette-textMuted text-xl">
                 <DollarSign className="w-6 h-6" />
                 <span>{costData.costPerServing.toFixed(2)}/serving{costData.costPartiallyUnknown && "?"}</span>
               </div>
@@ -436,43 +396,36 @@ export function MealDetailPage() {
         </div>
 
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="max-w-md flex flex-col max-h-[85vh] p-0">
-            <DialogHeader className="p-6 pb-0 shrink-0">
+          <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
               <DialogTitle>Edit meal</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSaveEdit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
-              <div className="overflow-y-auto px-6 py-4 space-y-6">
-                <section>
-                  <h3 className="text-sm font-semibold text-palette-taupe mb-3">Basics</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-palette-slate mb-1">Name</label>
-                      <Input
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        placeholder="e.g. Greek salad"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-palette-slate mb-1">Servings</label>
-                      <Input
-                        type="number"
-                        min={1}
-                        value={editServings}
-                        onChange={(e) => setEditServings(Number(e.target.value) || 1)}
-                      />
-                    </div>
-                  </div>
-                </section>
-                <section>
-                  <h3 className="text-sm font-semibold text-palette-taupe mb-3">Ingredients</h3>
-                  <div>
+            <form onSubmit={handleSaveEdit} className="space-y-4 mt-2">
+              <div>
+                <label className="block text-sm font-medium text-palette-textMuted mb-1">Name</label>
+                <Input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="e.g. Greek salad"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-palette-textMuted mb-1">Servings</label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={editServings}
+                  onChange={(e) => setEditServings(Number(e.target.value) || 1)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-palette-textMuted mb-1">Ingredients</label>
                 {editIngredients.length > 0 && (
-                  <ul className="space-y-2 mb-3 p-3 border border-palette-mist rounded-md bg-palette-cream/30">
+                  <ul className="space-y-2 mb-3 p-3 border border-palette-border rounded-md bg-palette-background/30">
                     {editIngredients.map((sel) => (
                       <li key={sel.ingredientId} className="flex items-center gap-2 text-sm">
-                        <span className="flex-1 truncate text-palette-taupe">{sel.name}</span>
+                        <span className="flex-1 truncate text-palette-text">{sel.name}</span>
                         <div className="flex items-center gap-1.5 shrink-0">
                           <Input
                             type="number"
@@ -482,7 +435,7 @@ export function MealDetailPage() {
                             onChange={(e) => setEditIngredientQuantity(sel.ingredientId, Number(e.target.value) || 0)}
                             className="w-20 h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
-                          <span className="text-palette-slate text-xs w-6">{sel.unit}</span>
+                          <span className="text-palette-textMuted text-xs w-6">{sel.unit}</span>
                         </div>
                         <Button
                           type="button"
@@ -502,7 +455,7 @@ export function MealDetailPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    className="w-full justify-between h-10 font-normal text-palette-slate"
+                    className="w-full justify-between h-10 font-normal text-palette-textMuted"
                     onClick={() => setEditIngredientDropdownOpen((o) => !o)}
                     aria-expanded={editIngredientDropdownOpen}
                     aria-haspopup="listbox"
@@ -511,8 +464,8 @@ export function MealDetailPage() {
                     <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${editIngredientDropdownOpen ? 'rotate-180' : ''}`} />
                   </Button>
                   {editIngredientDropdownOpen && (
-                    <div className="absolute z-10 top-full left-0 right-0 mt-1 border border-palette-mist rounded-md bg-white shadow-lg">
-                      <div className="p-2 border-b border-palette-mist">
+                    <div className="absolute z-10 top-full left-0 right-0 mt-1 border border-palette-border rounded-md bg-white shadow-lg">
+                      <div className="p-2 border-b border-palette-border">
                         <Input
                           placeholder="Search ingredients..."
                           value={editIngredientSearch}
@@ -523,7 +476,7 @@ export function MealDetailPage() {
                       </div>
                       <ul className="max-h-48 overflow-y-auto p-1" role="listbox">
                         {editIngredientsList.length === 0 ? (
-                          <li className="px-2 py-2 text-sm text-palette-slate">
+                          <li className="px-2 py-2 text-sm text-palette-textMuted">
                             {editIngredientSearch.trim() ? 'No ingredients found' : 'Type to search ingredients'}
                           </li>
                         ) : (
@@ -533,7 +486,7 @@ export function MealDetailPage() {
                                 type="button"
                                 onClick={() => addEditIngredient(ing)}
                                 disabled={editIngredients.some((s) => s.ingredientId === ing.id)}
-                                className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-palette-mist disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-gray-100/50 disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 {ing.name}
                               </button>
@@ -544,16 +497,14 @@ export function MealDetailPage() {
                     </div>
                   )}
                 </div>
-                  </div>
-                </section>
-                <section>
-                  <h3 className="text-sm font-semibold text-palette-taupe mb-3">Steps</h3>
-                  <div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-palette-textMuted mb-1">Steps</label>
                 {editSteps.length > 0 && (
-                  <ul className="space-y-2 mb-3 p-3 border border-palette-mist rounded-md bg-palette-cream/30">
+                  <ul className="space-y-2 mb-3 p-3 border border-palette-border rounded-md bg-palette-background/30">
                     {editSteps.map((step, index) => (
                       <li key={index} className="flex items-center gap-2 text-sm">
-                        <span className="shrink-0 w-5 text-palette-slate font-medium">{index + 1}.</span>
+                        <span className="shrink-0 w-5 text-palette-textMuted font-medium">{index + 1}.</span>
                         <Input
                           value={step}
                           onChange={(e) => setEditStep(index, e.target.value)}
@@ -578,13 +529,11 @@ export function MealDetailPage() {
                   <Plus className="w-4 h-4 mr-2" />
                   Add step
                 </Button>
-                  </div>
-                </section>
               </div>
               {updateRecipe.isError && (
-                <p className="text-sm text-red-600 px-6">Failed to save changes. Try again.</p>
+                <p className="text-sm text-red-600">Failed to save changes. Try again.</p>
               )}
-              <div className="shrink-0 flex gap-2 justify-end p-4 border-t border-palette-mist bg-white rounded-b-lg">
+              <div className="flex gap-2 justify-end">
                 <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
                   Cancel
                 </Button>
@@ -593,29 +542,6 @@ export function MealDetailPage() {
                 </Button>
               </div>
             </form>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={deleteRecipeConfirm} onOpenChange={setDeleteRecipeConfirm}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Delete recipe?</DialogTitle>
-            </DialogHeader>
-            <p className="text-sm text-palette-slate">
-              “{recipe?.name}” will be permanently removed. This can’t be undone.
-            </p>
-            <div className="flex gap-2 justify-end pt-4">
-              <Button variant="outline" onClick={() => setDeleteRecipeConfirm(false)}>
-                Cancel
-              </Button>
-              <Button
-                className="bg-red-600 hover:bg-red-700 text-white"
-                disabled={destroyRecipe.isPending}
-                onClick={() => recipe && destroyRecipe.mutate({ id: recipe.id })}
-              >
-                {destroyRecipe.isPending ? 'Deleting…' : 'Delete'}
-              </Button>
-            </div>
           </DialogContent>
         </Dialog>
       </div>
@@ -676,16 +602,16 @@ export function MealDetailPage() {
                 <TableBody>
                   {scaledIngredients.length === 0 ? (
                     <TableRow>
-                      <TableCell className="text-palette-taupe text-center py-4">
+                      <TableCell className="text-palette-text text-center py-4">
                         No ingredients in database for this recipe.
                       </TableCell>
-                      <TableCell className="text-palette-taupe text-center py-4" />
+                      <TableCell className="text-palette-text text-center py-4" />
                     </TableRow>
                   ) : (
                     scaledIngredients.map((item, index) => (
                       <TableRow
                         key={item.ingredient?.id ?? index}
-                        className="cursor-pointer hover:bg-palette-mist"
+                        className="cursor-pointer hover:bg-gray-100/50"
                         onClick={() => navigate(`/ingredient/${item.ingredient?.id}`)}
                       >
                         <TableCell>{item.ingredient?.name ?? '—'}</TableCell>
@@ -717,33 +643,33 @@ export function MealDetailPage() {
                   <NutritionLabel nutritionStats={nutritionData.nutritionPerServing} per_unit="Serving" />
                 ) :
                   <div className="space-y-3">
-                    <div className="text-center py-4 bg-palette-cream rounded-lg">
-                      <div className="text-3xl font-semibold text-palette-terracotta">
+                    <div className="text-center py-4 bg-palette-background rounded-lg">
+                      <div className="text-3xl font-semibold text-palette-primary">
                         {Math.round(nutritionData.nutritionPerServing.kcal_per_unit)}
                       </div>
-                      <div className="text-sm text-palette-slate">Calories per serving</div>
+                      <div className="text-sm text-palette-textMuted">Calories per serving</div>
                     </div>
-                    <div className="grid grid-cols-3 gap-4 pt-4 border-t border-palette-mist">
+                    <div className="grid grid-cols-3 gap-4 pt-4 border-t border-palette-border">
                       <div className="text-center">
-                        <div className="text-lg font-semibold text-palette-slate">
+                        <div className="text-lg font-semibold text-palette-textMuted">
                           {Math.round(nutritionData.nutritionPerServing.protein_grams_per_unit)}g
                         </div>
-                        <div className="text-xs text-palette-slate">Protein</div>
+                        <div className="text-xs text-palette-textMuted">Protein</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-lg font-semibold text-palette-taupe">
+                        <div className="text-lg font-semibold text-palette-text">
                           {Math.round(nutritionData.nutritionPerServing.carbohydrate_sugar_grams_per_unit + nutritionData.nutritionPerServing.carbohydrate_fiber_grams_per_unit)}g
                         </div>
-                        <div className="text-xs text-palette-slate">Carbs</div>
+                        <div className="text-xs text-palette-textMuted">Carbs</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-lg font-semibold text-palette-terracotta">
+                        <div className="text-lg font-semibold text-palette-primary">
                           {Math.round(nutritionData.nutritionPerServing.fat_saturated_grams_per_unit + nutritionData.nutritionPerServing.fat_trans_grams_per_unit)}g
                         </div>
-                        <div className="text-xs text-palette-slate">Fat</div>
+                        <div className="text-xs text-palette-textMuted">Fat</div>
                       </div>
                     </div>
-                    <div className="pt-3 border-t border-palette-mist text-xs text-palette-taupe">
+                    <div className="pt-3 border-t border-palette-border text-xs text-palette-text">
                       <div className="flex justify-between">
                         <span>Total for {servings} servings:</span>
                         <span>{Math.round(nutritionData.nutritionPerServing.kcal_per_unit * servings)} cal</span>
@@ -764,15 +690,15 @@ export function MealDetailPage() {
                 <ol className="space-y-3">
                   {recipe.steps.map((step) => (
                     <li key={step.step_number} className="flex gap-3">
-                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-palette-terracotta text-palette-cream flex items-center justify-center text-sm font-medium">
+                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-palette-primary text-palette-background flex items-center justify-center text-sm font-medium">
                         {step.step_number}
                       </span>
-                      <span className="text-sm text-palette-slate pt-0.5">{step.description}</span>
+                      <span className="text-sm text-palette-textMuted pt-0.5">{step.description}</span>
                     </li>
                   ))}
                 </ol>
               ) : (
-                <p className="text-sm text-palette-slate">No instructions in database.</p>
+                <p className="text-sm text-palette-textMuted">No instructions in database.</p>
               )}
             </CardContent>
           </Card>

@@ -2,9 +2,8 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { calculateRecipeNutrition, calculateRecipeCost } from '../utils/calculations';
-import { Search, DollarSign, Flame, Plus, X, ChevronDown, UtensilsCrossed } from 'lucide-react';
+import { Search, DollarSign, Flame, Plus, X, ChevronDown, Sparkles, Salad, BadgeDollarSign, Activity } from 'lucide-react';
 import { Input } from '../components/ui/input';
-import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { RecipeCard } from '../components/recipecard';
 import {
@@ -14,12 +13,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../components/ui/dialog';
-import { Skeleton } from '../components/ui/skeleton';
-import { Card, CardHeader, CardContent } from '../components/ui/card';
 import { useRecipesList, useTagsList, useRecipesCreate, useIngredientsList } from '../api/mealmodeAPI';
 import { getRecipesListQueryKey } from '../api/mealmodeAPI';
 import type { Tag, Ingredient } from '../api/mealmodeAPI';
-import { useToast } from '../context/ToastContext';
 
 function ingredientUnitLabel(ing: Ingredient): string {
   const u = ing.nutrition_stats?.base_unit;
@@ -30,30 +26,6 @@ function ingredientUnitLabel(ing: Ingredient): string {
 }
 
 type SelectedIngredient = { ingredientId: number; quantity: number; name: string; unit: string };
-
-function RecipeCardSkeleton() {
-  return (
-    <Card className="relative overflow-hidden h-full">
-      <div className="absolute top-0 right-0 w-24 h-24 bg-palette-cream/20 rounded-bl-full transform translate-x-12 -translate-y-12" aria-hidden />
-      <CardHeader className="relative z-10 pb-2">
-        <Skeleton className="h-6 w-3/4" />
-      </CardHeader>
-      <CardContent className="relative z-10 pt-0">
-        <div className="space-y-4">
-          <div className="flex justify-between gap-2">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-4 w-28" />
-          </div>
-          <Skeleton className="h-4 w-20" />
-          <div className="flex flex-wrap gap-1">
-            <Skeleton className="h-5 w-14 rounded-full" />
-            <Skeleton className="h-5 w-16 rounded-full" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 export function MealListPage() {
   const navigate = useNavigate();
@@ -66,12 +38,10 @@ export function MealListPage() {
     ...(ingredientSearch.trim() && { search: ingredientSearch.trim() }),
   });
   const ingredientsList: Ingredient[] = ingredientsResponse?.data?.results ?? [];
-  const toast = useToast();
   const createRecipe = useRecipesCreate({
     mutation: {
       onSuccess: (response) => {
         queryClient.invalidateQueries({ queryKey: getRecipesListQueryKey() });
-        toast('Meal added');
         const res = response as { data?: { id?: number } };
         const id = res?.data?.id ?? (res as { id?: number })?.id;
         if (id != null) navigate(`/meal/${id}`);
@@ -116,6 +86,42 @@ export function MealListPage() {
       return true;
     });
   }, [recipeData, searchTerm, selectedTags, maxCost, maxCalories]);
+
+  const recipeInsights = useMemo(() => {
+    const recipes = filteredMeals ?? [];
+    if (recipes.length === 0) {
+      return {
+        avgCost: null as number | null,
+        avgCalories: null as number | null,
+        quickTags: [] as string[],
+      };
+    }
+
+    let totalCost = 0;
+    let totalCalories = 0;
+    const tagCounts = new Map<string, number>();
+
+    recipes.forEach((recipe) => {
+      const { costPerServing } = calculateRecipeCost(recipe);
+      const { nutritionPerServing } = calculateRecipeNutrition(recipe);
+      totalCost += Number.isFinite(costPerServing) ? costPerServing : 0;
+      totalCalories += Number.isFinite(nutritionPerServing.kcal_per_unit) ? nutritionPerServing.kcal_per_unit : 0;
+      recipe.tags?.forEach((tag) => {
+        tagCounts.set(tag.name, (tagCounts.get(tag.name) ?? 0) + 1);
+      });
+    });
+
+    const quickTags = Array.from(tagCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+      .map(([name]) => name);
+
+    return {
+      avgCost: totalCost / recipes.length,
+      avgCalories: totalCalories / recipes.length,
+      quickTags,
+    };
+  }, [filteredMeals]);
 
   const toggleTag = (tag: Tag) => {
     setSelectedTags((prev) =>
@@ -176,57 +182,49 @@ export function MealListPage() {
   };
 
   return (
-    <div>
-      <div className="mb-8">
-        <div className="flex items-center justify-between gap-4 mb-2">
-          <div className="flex items-center gap-3">
-            <UtensilsCrossed className="h-7 w-7 text-palette-terracotta shrink-0" aria-hidden />
-            <h1 className="font-brand text-2xl font-semibold text-palette-taupe tracking-tight">Meals</h1>
-          </div>
-          <Dialog open={addMealOpen} onOpenChange={setAddMealOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Add meal
-              </Button>
-            </DialogTrigger>
-          <DialogContent className="max-w-md flex flex-col max-h-[85vh] p-0">
-            <DialogHeader className="p-6 pb-0 shrink-0">
+    <div className="space-y-8 animate-[fadeIn_0.5s_ease-out]">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h2 className="text-4xl font-brand font-extrabold text-palette-text mb-1 tracking-tight">Your Recipe Library</h2>
+          <p className="text-palette-textMuted text-sm font-medium">Discover, manage, and plan your culinary journey.</p>
+        </div>
+        <Dialog open={addMealOpen} onOpenChange={setAddMealOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-palette-primary hover:bg-palette-primaryDark text-white px-6 shadow-soft transition-all hover:shadow-md">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Recipe
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
               <DialogTitle>Add meal</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleAddMeal} className="flex flex-col flex-1 min-h-0 flex overflow-hidden">
-              <div className="overflow-y-auto px-6 py-4 space-y-6">
-                <section>
-                  <h3 className="text-sm font-semibold text-palette-taupe mb-3">Basics</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-palette-slate mb-1">Name</label>
-                      <Input
-                        value={newMealName}
-                        onChange={(e) => setNewMealName(e.target.value)}
-                        placeholder="e.g. Greek salad"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-palette-slate mb-1">Servings</label>
-                      <Input
-                        type="number"
-                        min={1}
-                        value={newMealServings}
-                        onChange={(e) => setNewMealServings(Number(e.target.value))}
-                      />
-                    </div>
-                  </div>
-                </section>
-                <section>
-                  <h3 className="text-sm font-semibold text-palette-taupe mb-3">Ingredients</h3>
-                  <div>
+            <form onSubmit={handleAddMeal} className="space-y-4 mt-2">
+              <div>
+                <label className="block text-sm font-bold text-palette-text mb-2">Recipe Name</label>
+                <Input
+                  value={newMealName}
+                  onChange={(e) => setNewMealName(e.target.value)}
+                  placeholder="e.g. Greek salad"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-palette-text mb-2">Servings</label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={newMealServings}
+                  onChange={(e) => setNewMealServings(Number(e.target.value))}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-palette-text mb-2">Ingredients</label>
                 {selectedIngredients.length > 0 && (
-                  <ul className="space-y-2 mb-3 p-3 border border-palette-mist rounded-md bg-palette-cream/30">
+                  <ul className="space-y-2 mb-4 p-4 border border-palette-border rounded-2xl bg-[#F5F4F1]/50">
                     {selectedIngredients.map((sel) => (
                       <li key={sel.ingredientId} className="flex items-center gap-2 text-sm">
-                        <span className="flex-1 truncate text-palette-taupe">{sel.name}</span>
+                        <span className="flex-1 truncate text-palette-text">{sel.name}</span>
                         <div className="flex items-center gap-1.5 shrink-0">
                           <Input
                             type="number"
@@ -234,15 +232,15 @@ export function MealListPage() {
                             step="any"
                             value={sel.quantity}
                             onChange={(e) => setIngredientQuantity(sel.ingredientId, Number(e.target.value))}
-                            className="w-20 h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            className="w-20 h-10 py-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none rounded-xl border-2 border-transparent transition-all"
                           />
-                          <span className="text-palette-slate text-xs w-6">{sel.unit}</span>
+                          <span className="text-palette-textMuted text-xs w-6">{sel.unit}</span>
                         </div>
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 shrink-0 p-0"
+                          className="h-10 w-10 shrink-0 p-0 text-[#8A8A86]"
                           onClick={() => removeIngredient(sel.ingredientId)}
                           aria-label="Remove"
                         >
@@ -256,7 +254,7 @@ export function MealListPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    className="w-full justify-between h-10 font-normal text-palette-slate"
+                    className="w-full justify-between h-12 rounded-2xl font-medium text-[#A3A3A0] border-2 border-palette-border bg-[#F5F4F1] hover:bg-white"
                     onClick={() => setIngredientDropdownOpen((o) => !o)}
                     aria-expanded={ingredientDropdownOpen}
                     aria-haspopup="listbox"
@@ -265,19 +263,19 @@ export function MealListPage() {
                     <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${ingredientDropdownOpen ? 'rotate-180' : ''}`} />
                   </Button>
                   {ingredientDropdownOpen && (
-                    <div className="absolute z-10 top-full left-0 right-0 mt-1 border border-palette-mist rounded-md bg-white shadow-lg">
-                      <div className="p-2 border-b border-palette-mist">
+                    <div className="absolute z-10 top-full left-0 right-0 mt-2 border-2 border-palette-border rounded-2xl bg-white shadow-glass overflow-hidden">
+                      <div className="p-3 border-b border-palette-border bg-[#F5F4F1]">
                         <Input
                           placeholder="Search ingredients..."
                           value={ingredientSearch}
                           onChange={(e) => setIngredientSearch(e.target.value)}
-                          className="h-9"
+                          className="h-10 rounded-xl"
                           autoFocus
                         />
                       </div>
                       <ul className="max-h-48 overflow-y-auto p-1" role="listbox">
                         {ingredientsList.length === 0 ? (
-                          <li className="px-2 py-2 text-sm text-palette-slate">
+                          <li className="px-2 py-2 text-sm text-palette-textMuted">
                             {ingredientSearch.trim() ? 'No ingredients found' : 'Type to search ingredients'}
                           </li>
                         ) : (
@@ -287,7 +285,7 @@ export function MealListPage() {
                                 type="button"
                                 onClick={() => addIngredient(ing)}
                                 disabled={selectedIngredients.some((s) => s.ingredientId === ing.id)}
-                                className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-palette-mist disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full text-left px-2 py-1.5 text-sm rounded hover:bg-palette-border disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 {ing.name}
                               </button>
@@ -298,27 +296,25 @@ export function MealListPage() {
                     </div>
                   )}
                 </div>
-                  </div>
-                </section>
-                <section>
-                  <h3 className="text-sm font-semibold text-palette-taupe mb-3">Steps</h3>
-                  <div>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-palette-text mb-2">Steps</label>
                 {newMealSteps.length > 0 && (
-                  <ul className="space-y-2 mb-3 p-3 border border-palette-mist rounded-md bg-palette-cream/30">
+                  <ul className="space-y-3 mb-4 p-4 border border-palette-border rounded-2xl bg-[#F5F4F1]/50">
                     {newMealSteps.map((step, index) => (
                       <li key={index} className="flex items-center gap-2 text-sm">
-                        <span className="shrink-0 w-5 text-palette-slate font-medium">{index + 1}.</span>
+                        <span className="shrink-0 w-5 text-palette-textMuted font-bold">{index + 1}.</span>
                         <Input
                           value={step}
                           onChange={(e) => setStep(index, e.target.value)}
                           placeholder={`Step ${index + 1}`}
-                          className="flex-1 h-8"
+                          className="flex-1 h-10 rounded-xl"
                         />
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 shrink-0 p-0"
+                          className="h-10 w-10 shrink-0 p-0 text-[#8A8A86]"
                           onClick={() => removeStep(index)}
                           aria-label="Remove step"
                         >
@@ -328,18 +324,16 @@ export function MealListPage() {
                     ))}
                   </ul>
                 )}
-                <Button type="button" variant="outline" size="sm" onClick={addStep} className="w-full justify-center">
-                  <Plus className="w-4 h-4 mr-2" />
+                <Button type="button" variant="outline" onClick={addStep} className="w-full justify-center h-12 rounded-2xl bg-[#F5F4F1] border-2 border-palette-border text-palette-text hover:bg-white hover:border-palette-primary/30 transition-all font-bold">
+                  <Plus className="w-4 h-4 mr-2 text-palette-primary" />
                   Add step
                 </Button>
-                  </div>
-                </section>
               </div>
               {createRecipe.isError && (
-                <p className="text-sm text-red-600 px-6">Failed to create meal. Try again.</p>
+                <p className="text-sm text-red-600">Failed to create meal. Try again.</p>
               )}
-              <div className="shrink-0 flex gap-2 justify-end p-4 border-t border-palette-mist bg-white rounded-b-lg">
-                <Button type="button" variant="outline" onClick={() => setAddMealOpen(false)}>
+              <div className="flex gap-3 justify-end mt-8">
+                <Button type="button" variant="ghost" onClick={() => setAddMealOpen(false)} className="px-6 text-palette-textMuted">
                   Cancel
                 </Button>
                 <Button type="submit" disabled={createRecipe.isPending}>
@@ -349,129 +343,147 @@ export function MealListPage() {
             </form>
           </DialogContent>
         </Dialog>
-        </div>
-        <p className="text-palette-slate text-sm">Browse and search your meal collection</p>
       </div>
 
-      <Card className="mb-6 p-4">
-        <div className="space-y-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-palette-slate/80" />
-            <Input
-              type="text"
-              placeholder="Search meals..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+      {/* Search & Filter Container */}
+      <div className="flex flex-col gap-6 p-6 md:p-8 bg-white rounded-3xl shadow-sm border border-palette-border/60">
+        
+        {/* Helper Context (Visual Structure) */}
+        <div className="flex flex-col mb-2">
+            <h3 className="text-lg font-bold text-palette-text mb-1">Find & Filter</h3>
+            <p className="text-sm text-[#8A8A86] font-medium">Quickly locate meals by name, cost, or dietary tags.</p>
+        </div>
+        
+        {/* Main Search */}
+        <div className="relative w-full">
+          <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-[#A3A3A0]" />
+          <input
+            type="text"
+            placeholder="Search recipes..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-16 pr-6 bg-[#F5F4F1] border-2 border-transparent outline-none rounded-2xl h-16 text-lg font-medium placeholder:text-[#A3A3A0] text-palette-text transition-all"
+          />
+        </div>
+
+        {/* Sub-Filters */}
+        <div className="flex flex-wrap gap-4 items-center">
+          <div className="flex items-center gap-2 bg-[#F5F4F1] rounded-2xl pl-5 pr-2 py-1.5 border-2 border-transparent transition-all">
+            <DollarSign className="w-5 h-5 text-palette-amber" />
+            <input
+              type="number"
+              placeholder="Max cost"
+              value={maxCost ?? ''}
+              onChange={(e) => setMaxCost(e.target.value ? Number(e.target.value) : null)}
+              className="w-28 border-none bg-transparent h-10 focus:outline-none focus:ring-0 outline-none shadow-none px-1 text-base font-medium placeholder:text-[#A3A3A0]"
+              step="0.5"
             />
           </div>
-
-          <div className="flex flex-wrap gap-3 items-center">
-            <div className="flex items-center gap-2">
-              <DollarSign className="w-4 h-4 text-palette-slate/80" />
-              <Input
-                type="number"
-                placeholder="Max cost/serving"
-                value={maxCost ?? ''}
-                onChange={(e) => setMaxCost(e.target.value ? Number(e.target.value) : null)}
-                className="w-40"
-                step="0.5"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Flame className="w-4 h-4 text-palette-slate/80" />
-              <Input
-                type="number"
-                placeholder="Max calories"
-                value={maxCalories ?? ''}
-                onChange={(e) => setMaxCalories(e.target.value ? Number(e.target.value) : null)}
-                className="w-40"
-              />
-            </div>
-            {selectedTags.length > 0 && (
-              <Button variant="outline" size="sm" onClick={() => setSelectedTags([])}>
-                Clear filters
-              </Button>
-            )}
+          <div className="flex items-center gap-2 bg-[#F5F4F1] rounded-2xl pl-5 pr-2 py-1.5 border-2 border-transparent transition-all">
+            <Flame className="w-5 h-5 text-palette-emerald" />
+            <input
+              type="number"
+              placeholder="Max cal"
+              value={maxCalories ?? ''}
+              onChange={(e) => setMaxCalories(e.target.value ? Number(e.target.value) : null)}
+              className="w-28 border-none bg-transparent h-10 focus:outline-none focus:ring-0 outline-none shadow-none px-1 text-base font-medium placeholder:text-[#A3A3A0]"
+            />
           </div>
-
-          <div>
-            <p className="text-sm font-medium text-palette-taupe mb-2">Filter by tags</p>
-            <div className="flex flex-wrap gap-2">
-              <Badge
-                variant={selectedTags.length === 0 ? 'default' : 'outline'}
-                className="cursor-pointer"
-                onClick={() => setSelectedTags([])}
-              >
-                All
-              </Badge>
-              {tagData?.data.results?.map((tag) => (
-                <Badge
-                  key={tag.id}
-                  variant={selectedTags.includes(tag) ? 'default' : 'outline'}
-                  className="cursor-pointer"
-                  onClick={() => toggleTag(tag)}
-                >
-                  {tag.name}
-                </Badge>
-              ))}
-            </div>
-          </div>
+          {selectedTags.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setSelectedTags([])}
+              className="text-[#8A8A86] rounded-2xl h-12 px-6 text-sm font-bold bg-[#F5F4F1] focus:outline-none hover:bg-palette-border/50 transition-colors"
+            >
+              Clear filters
+            </button>
+          )}
         </div>
-      </Card>
-      {recipeIsError && (
-        <div className="text-center py-12 text-palette-slate">Failed to load meals. Please try again.</div>
-      )}
-      {!recipeIsError && recipeIsLoading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <RecipeCardSkeleton key={i} />
+
+        {/* Tags */}
+        <div className="flex flex-wrap gap-2 pt-3">
+          {tagData?.data.results?.map((tag) => (
+            <button
+              key={tag.id}
+              type="button"
+              className={`cursor-pointer rounded-2xl px-5 py-2 text-sm font-bold m-0 outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-palette-primary/20 shadow-none transition-colors border-2 ${selectedTags.includes(tag) ? 'bg-palette-text border-palette-text text-white' : 'bg-[#F5F4F1] border-transparent text-[#8A8A86] hover:bg-white hover:border-palette-primary/20'}`}
+              onClick={() => toggleTag(tag)}
+            >
+              {tag.name}
+            </button>
           ))}
         </div>
-      )}
+      </div>
+
       {!recipeIsError && !recipeIsLoading && filteredMeals && (
-        <div>
-          <div className="mb-4 text-sm text-palette-slate">
-            Showing {filteredMeals.length} of {recipeData?.data.count ?? 0} meals
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="rounded-2xl border border-palette-border/70 bg-white px-5 py-4 shadow-sm">
+            <div className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-palette-textMuted">
+              <Salad className="h-4 w-4 text-palette-primary" />
+              Total Results
+            </div>
+            <div className="text-2xl font-extrabold text-palette-text">{filteredMeals.length}</div>
           </div>
-          {filteredMeals.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-              <UtensilsCrossed className="h-14 w-14 text-palette-mist mb-4" aria-hidden />
-              <p className="text-lg font-medium text-palette-taupe mb-6 max-w-sm">
-                {(recipeData?.data.count ?? 0) === 0
-                  ? 'Add your first meal to get started.'
-                  : 'No meals match your filters. Try clearing search or filters.'}
-              </p>
-              <Button
-                variant={(recipeData?.data.count ?? 0) > 0 ? 'outline' : 'default'}
-                onClick={
-                  (recipeData?.data.count ?? 0) === 0
-                    ? () => setAddMealOpen(true)
-                    : () => {
-                        setSearchTerm('');
-                        setSelectedTags([]);
-                        setMaxCost(null);
-                        setMaxCalories(null);
-                      }
-                }
-              >
-                {(recipeData?.data.count ?? 0) === 0 ? (
-                  <>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add your first meal
-                  </>
-                ) : (
-                  'Clear filters'
-                )}
-              </Button>
+          <div className="rounded-2xl border border-palette-border/70 bg-white px-5 py-4 shadow-sm">
+            <div className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-palette-textMuted">
+              <BadgeDollarSign className="h-4 w-4 text-palette-amber" />
+              Avg Cost / Serving
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredMeals.map((recipe) => (
-                <RecipeCard recipe={recipe} key={recipe.id} />
-              ))}
+            <div className="text-2xl font-extrabold text-palette-text">
+              {recipeInsights.avgCost !== null ? `$${recipeInsights.avgCost.toFixed(2)}` : '—'}
             </div>
-          )}
+          </div>
+          <div className="rounded-2xl border border-palette-border/70 bg-white px-5 py-4 shadow-sm">
+            <div className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-palette-textMuted">
+              <Activity className="h-4 w-4 text-palette-emerald" />
+              Avg Calories
+            </div>
+            <div className="text-2xl font-extrabold text-palette-text">
+              {recipeInsights.avgCalories !== null ? `${Math.round(recipeInsights.avgCalories)} kcal` : '—'}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-palette-border/70 bg-white px-5 py-4 shadow-sm">
+            <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-palette-textMuted">
+              <Sparkles className="h-4 w-4 text-palette-primaryDark" />
+              Popular Tags
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {recipeInsights.quickTags.length > 0 ? (
+                recipeInsights.quickTags.map((tag) => (
+                  <span key={tag} className="rounded-full bg-[#F5F4F1] px-3 py-1 text-xs font-semibold text-palette-textMuted">
+                    {tag}
+                  </span>
+                ))
+              ) : (
+                <span className="text-sm text-palette-textMuted">No tags in current results</span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!recipeIsError && !recipeIsLoading && filteredMeals && (
+        <div className="pt-2">
+          <div className="mb-6 flex items-center gap-3">
+            <div className="h-px bg-palette-border flex-1" />
+            <span className="text-xs font-bold uppercase tracking-wider text-palette-textMuted">
+              {filteredMeals.length} {filteredMeals.length === 1 ? 'Recipe' : 'Recipes'}
+            </span>
+            <div className="h-px bg-palette-border flex-1" />
+          </div>
+          {
+            filteredMeals.length === 0 && (
+              <div className="text-center py-16 text-palette-textMuted bg-white rounded-3xl border border-palette-border shadow-sm border-dashed">
+                <p className="text-lg font-medium">No recipes found matching your criteria.</p>
+                <p className="text-sm mt-1">Try adjusting your filters or search term.</p>
+              </div>
+            )
+          }
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {
+              filteredMeals.map((recipe) => { return (<RecipeCard recipe={recipe} key={recipe.id} />) })
+            }
+          </div>
         </div>
       )}
 

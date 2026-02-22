@@ -7,36 +7,36 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        brand: ['"Cormorant Garamond"', 'Georgia', 'serif'],
-        sans: ['"DM Sans"', 'system-ui', 'sans-serif'],
+        sans: ['"Inter"', 'sans-serif'],
+        brand: ['"Outfit"', 'sans-serif'],
       },
       colors: {
         palette: {
-          lightblue: '#d3ebff',
-          slate: '#632024',
-          mist: '#8db4d2',
-          cream: '#d5b893',
-          taupe: '#25344f',
-          terracotta: '#6f4d38',
-        },
-        surface: {
-          DEFAULT: '#faf9f7',
-          raised: '#ffffff',
+          primary: '#D15B40',
+          primaryDark: '#A84731',
+          emerald: '#688B58',
+          amber: '#DE9842',
+          background: '#FBF9F6',
+          surface: '#FFFFFF',
+          text: '#2F2A26',
+          textMuted: '#797067',
+          border: '#E6E1DA',
         },
       },
       boxShadow: {
-        'card': '0 1px 3px 0 rgb(37 52 79 / 0.06), 0 1px 2px -1px rgb(37 52 79 / 0.06)',
-        'card-hover': '0 4px 14px -2px rgb(37 52 79 / 0.08), 0 6px 20px -4px rgb(37 52 79 / 0.06)',
-        'dialog': '0 20px 50px -12px rgb(0 0 0 / 0.2), 0 0 0 1px rgb(37 52 79 / 0.06)',
+        'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
+        'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
       },
-      transitionDuration: {
-        DEFAULT: '200ms',
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        }
       },
-      transitionTimingFunction: {
-        smooth: 'cubic-bezier(0.4, 0, 0.2, 1)',
-      },
+      animation: {
+        fadeIn: 'fadeIn 0.5s ease-out forwards',
+      }
     },
   },
   plugins: [],
 }
-

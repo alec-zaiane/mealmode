@@ -1,4 +1,4 @@
-import type { Recipe, RecipeIngredient, Ingredient, OnHandIngredient } from '../api/mealmodeAPI';
+import type { Recipe, RecipeIngredient, OnHandIngredient } from '../api/mealmodeAPI';
 
 export interface MealPlanEntryForShopping {
   mealId: string;

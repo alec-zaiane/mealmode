@@ -1,13 +1,11 @@
 import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { useToast } from '../context/ToastContext';
 import { useRecipesList } from '../api/mealmodeAPI';
 import type { Recipe } from '../api/mealmodeAPI';
 import { useNavigate } from 'react-router-dom';
-import { X, Plus, Search, Calendar, ShoppingCart } from 'lucide-react';
+import { X, Plus, Search } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -15,7 +13,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../components/ui/dialog';
-import { Skeleton } from '../components/ui/skeleton';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const SLOTS = ['breakfast', 'lunch', 'dinner'];
@@ -33,14 +30,18 @@ function SelectableMeal({ mealName, servings, selected, onSelect }: MealCardProp
     <button
       type="button"
       onClick={onSelect}
-      className={`w-full p-2 rounded text-xs text-left transition-colors ${
+      className={`w-full p-3 rounded-2xl text-left transition-all duration-300 border ${
         selected
-          ? 'bg-palette-terracotta/20 border-2 border-palette-terracotta ring-2 ring-palette-terracotta/30'
-          : 'bg-palette-cream border border-palette-terracotta hover:bg-palette-terracotta/10'
+          ? 'bg-palette-primary/10 border-palette-primary shadow-sm scale-[0.98]'
+          : 'bg-white border-palette-border hover:border-palette-primary/50 hover:shadow-soft'
       }`}
     >
-      <div className="font-semibold truncate">{mealName}</div>
-      <div className="text-palette-slate">{servings} servings</div>
+      <div className={`font-brand font-bold truncate line-clamp-2 leading-tight ${selected ? 'text-palette-primaryDark' : 'text-palette-text'}`}>
+        {mealName}
+      </div>
+      <div className={`text-xs font-semibold mt-1 ${selected ? 'text-palette-primary/80' : 'text-palette-textMuted'}`}>
+        {servings} serving{servings !== 1 ? 's' : ''}
+      </div>
     </button>
   );
 }
@@ -51,11 +52,11 @@ interface PlanSlotProps {
   planEntry?: { id: string; mealId: string; mealName: string; servings: number };
   selectedMealId: string | null;
   onPlace: (day: string, slot: string) => void;
-  onRemoveRequest: (entry: { id: string; mealName: string }) => void;
+  onRemove: (entryId: string) => void;
   onViewMeal: (mealId: string) => void;
 }
 
-function PlanSlot({ day, slot, planEntry, selectedMealId, onPlace, onRemoveRequest, onViewMeal }: PlanSlotProps) {
+function PlanSlot({ day, slot, planEntry, selectedMealId, onPlace, onRemove, onViewMeal }: PlanSlotProps) {
   const isEmpty = !planEntry;
   const canPlace = selectedMealId && isEmpty;
 
@@ -67,39 +68,45 @@ function PlanSlot({ day, slot, planEntry, selectedMealId, onPlace, onRemoveReque
 
   return (
     <div
-      className={`min-h-20 p-2 border-2 rounded transition-colors ${
+      className={`min-h-24 p-2 border rounded-2xl transition-all duration-300 ${
         canPlace
-          ? 'border-palette-terracotta border-dashed bg-palette-cream cursor-pointer hover:bg-palette-terracotta/10'
+          ? 'border-palette-primary border-dashed bg-palette-primary/5 cursor-pointer hover:bg-palette-primary/10 scale-[1.02]'
           : planEntry
-          ? 'border-palette-taupe bg-white'
-          : 'border-dashed border-palette-mist bg-palette-mist'
+          ? 'border-transparent bg-transparent'
+          : 'border-dashed border-palette-border bg-gray-50/50'
       }`}
-      onClick = {canPlace ? handleSlotClick: undefined}
-      role = {canPlace ? 'button': undefined}
-      tabIndex = {canPlace ? 0 : undefined}
-      onKeyDown = {canPlace ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSlotClick(); } } : undefined}
+      onClick={canPlace ? handleSlotClick : undefined}
+      role={canPlace ? 'button' : undefined}
+      tabIndex={canPlace ? 0 : undefined}
+      onKeyDown={canPlace ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSlotClick(); } } : undefined}
     >
       {planEntry ? (
-        <div className="relative group">
+        <div className="relative group h-full">
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onRemoveRequest({ id: planEntry.id, mealName: planEntry.mealName }); }}
-            className="absolute -top-1 -right-1 w-5 h-5 bg-palette-slate text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-DEFAULT hover:bg-palette-slate/90 shadow-card"
-            aria-label="Remove from plan"
+            onClick={(e) => { e.stopPropagation(); onRemove(planEntry.id); }}
+            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md z-10 hover:bg-red-600 scale-90 group-hover:scale-100"
           >
-            <X className="w-3 h-3" />
+            <X className="w-3.5 h-3.5" />
           </button>
           <div
-            className="p-2 bg-white border rounded cursor-pointer hover:bg-palette-mist transition-colors"
+            className="p-3 h-full bg-white border border-palette-border rounded-xl cursor-pointer hover:border-palette-primary/40 hover:shadow-soft transition-all transform group-hover:-translate-y-0.5"
             onClick={(e) => { e.stopPropagation(); onViewMeal(planEntry.mealId); }}
           >
-            <div className="font-semibold text-sm truncate">{planEntry.mealName}</div>
-            <div className="text-xs text-palette-slate">{planEntry.servings} servings</div>
+            <div className="font-brand font-bold text-sm text-palette-text line-clamp-2 leading-tight mb-1">{planEntry.mealName}</div>
+            <div className="text-xs font-semibold text-palette-textMuted bg-gray-100 w-fit px-1.5 py-0.5 rounded-md">{planEntry.servings} portions</div>
           </div>
         </div>
       ) : (
-        <div className="h-full flex items-center justify-center text-palette-slate text-xs">
-          {selectedMealId ? 'Click to add meal' : '—'}
+        <div className="h-full flex items-center justify-center">
+          {canPlace ? (
+            <div className="flex flex-col items-center justify-center text-palette-primary">
+              <Plus className="w-5 h-5 mb-1" />
+              <span className="text-xs font-bold">Place Meal</span>
+            </div>
+          ) : (
+            <span className="text-palette-border">—</span>
+          )}
         </div>
       )}
     </div>
@@ -108,10 +115,8 @@ function PlanSlot({ day, slot, planEntry, selectedMealId, onPlace, onRemoveReque
 
 function MealPlanContent() {
   const navigate = useNavigate();
-  const toast = useToast();
   const { mealPlan, isLoading: planLoading, addMealToPlan, removeMealFromPlan } = useApp();
   const { data: recipeData, isLoading } = useRecipesList();
-  const [confirmRemove, setConfirmRemove] = useState<{ id: string; mealName: string } | null>(null);
   const recipes = useMemo((): Recipe[] => {
     const body =
       recipeData && typeof recipeData === 'object' && 'data' in recipeData
@@ -134,28 +139,11 @@ function MealPlanContent() {
     const existingEntry = mealPlan.find((entry) => entry.day === day && entry.slot === slot);
     if (existingEntry) removeMealFromPlan(existingEntry.id);
     const recipe = recipes.find((r) => String(r.id) === selectedMealId);
-    if (recipe) {
-      addMealToPlan({ mealId: selectedMealId, day, slot, servings: recipe.servings ?? 1 });
-      toast('Added to plan');
-    }
+    if (recipe) addMealToPlan({ mealId: selectedMealId, day, slot, servings: recipe.servings ?? 1 });
     setSelectedMealId(null);
   };
 
-  const handleRemoveRequest = (entry: { id: string; mealName: string }) => setConfirmRemove(entry);
-  const handleConfirmRemove = () => {
-    if (!confirmRemove) return;
-    const fullEntry = enrichedPlan.find((e) => e.id === confirmRemove.id);
-    const entryToRestore = fullEntry
-      ? { mealId: fullEntry.mealId, day: fullEntry.day, slot: fullEntry.slot, servings: fullEntry.servings }
-      : null;
-    removeMealFromPlan(confirmRemove.id);
-    toast('Removed from plan', {
-      undo: entryToRestore
-        ? () => addMealToPlan(entryToRestore)
-        : undefined,
-    });
-    setConfirmRemove(null);
-  };
+  const handleRemove = (entryId: string) => removeMealFromPlan(entryId);
   const handleViewMeal = (mealId: string) => navigate(`/meal/${mealId}`);
 
   const enrichedPlan = mealPlan.map((entry) => {
@@ -167,121 +155,110 @@ function MealPlanContent() {
   });
 
   return (
-    <div>
-      <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
+    <div className="space-y-8 animate-[fadeIn_0.5s_ease-out]">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="font-brand text-2xl font-semibold text-palette-taupe mb-2 tracking-tight">Meal Plan</h1>
-          <p className="text-palette-slate">Click a meal, then click a slot to add it to your plan</p>
+          <h2 className="text-4xl font-brand font-extrabold text-palette-text mb-1 tracking-tight">Weekly Planner</h2>
+          <p className="text-palette-textMuted text-sm font-medium">Select a meal from below, then tap a slot to schedule it.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={() => {
-              toast('Shopping list ready');
-              navigate('/shopping');
-            }}
-          >
-            <ShoppingCart className="w-4 h-4 mr-2" />
-            Generate shopping list
-          </Button>
-          <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setViewAllSearchTerm(''); }}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                View All Meals
-              </Button>
-            </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Pick a Meal for Your Plan</DialogTitle>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setViewAllSearchTerm(''); }}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="px-6 border-palette-border hover:bg-gray-50 text-palette-text shadow-sm">
+              <Search className="w-4 h-4 mr-2 text-palette-textMuted" />
+              Find specific meal
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col rounded-3xl p-6">
+            <DialogHeader className="mb-4 shrink-0">
+              <DialogTitle className="font-brand text-2xl font-bold">Pick a Meal</DialogTitle>
             </DialogHeader>
-            <div className="relative mt-4 mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-palette-slate" />
+            <div className="relative mb-4 shrink-0 group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-palette-textMuted transition-colors" />
               <Input
                 type="text"
-                placeholder="Search meals..."
+                placeholder="Search recipes..."
                 value={viewAllSearchTerm}
                 onChange={(e) => setViewAllSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-12 bg-gray-50 border-transparent hover:border-palette-border rounded-2xl h-12 text-base transition-all"
               />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-              {isLoading ? (
-                <>
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <Skeleton key={i} className="h-16 rounded-md" />
-                  ))}
-                </>
-              ) : (
-                filteredRecipesForDialog.map((recipe) => (
-                  <SelectableMeal
-                    key={recipe.id}
-                    mealId={String(recipe.id)}
-                    mealName={recipe.name}
-                    servings={recipe.servings ?? 1}
-                    selected={selectedMealId === String(recipe.id)}
-                    onSelect={() => {
-                      const id = String(recipe.id);
-                      setSelectedMealId((prev) => (prev === id ? null : id));
-                      if (selectedMealId !== id) setIsDialogOpen(false);
-                    }}
-                  />
-                ))
-              )}
+            <div className="overflow-y-auto overflow-x-hidden pr-2 flex-1 pb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {isLoading ? (
+                  <p className="text-palette-textMuted col-span-full py-4 text-center font-medium">Loading your recipes…</p>
+                ) : (
+                  filteredRecipesForDialog.map((recipe) => (
+                    <SelectableMeal
+                      key={recipe.id}
+                      mealId={String(recipe.id)}
+                      mealName={recipe.name}
+                      servings={recipe.servings ?? 1}
+                      selected={selectedMealId === String(recipe.id)}
+                      onSelect={() => {
+                        const id = String(recipe.id);
+                        setSelectedMealId((prev) => (prev === id ? null : id));
+                        if (selectedMealId !== id) setIsDialogOpen(false);
+                      }}
+                    />
+                  ))
+                )}
+              </div>
             </div>
           </DialogContent>
-          </Dialog>
-        </div>
+        </Dialog>
       </div>
 
-      <Card>
-        <CardContent className="p-4">
-          {planLoading ? (
-            <div className="overflow-x-auto py-4">
-              <div className="min-w-[800px]">
-                <div className="grid grid-cols-8 gap-2 mb-2">
-                  <div />
-                  {DAYS.map((d) => (
-                    <Skeleton key={d} className="h-4 rounded" />
-                  ))}
-                </div>
-                {SLOTS.map((slot) => (
-                  <div key={slot} className="grid grid-cols-8 gap-2 mb-2">
-                    <Skeleton className="h-4 w-16" />
-                    {DAYS.map((day) => (
-                      <Skeleton key={day} className="min-h-20 rounded" />
-                    ))}
-                  </div>
-                ))}
-              </div>
+      <div className="bg-white rounded-3xl shadow-soft border border-palette-border overflow-hidden">
+        {/* Quick Add Tray */}
+        <div className="bg-gray-50 border-b border-palette-border p-5">
+            <div className="flex items-center gap-2 mb-3">
+                <div className="w-1.5 h-4 bg-palette-primary rounded-full"></div>
+                <h3 className="text-sm font-bold text-palette-text uppercase tracking-wider">Quick Action Tray</h3>
             </div>
+            
+            <div className="flex overflow-x-auto pb-4 pt-1 gap-3 snap-x hide-scrollbar mask-edges">
+                {isLoading ? (
+                    <div className="text-sm font-medium text-palette-textMuted py-2">Loading tray...</div>
+                ) : (
+                    recipes.slice(0, 10).map((recipe) => (
+                        <div key={recipe.id} className="min-w-[200px] w-[200px] shrink-0 snap-start">
+                            <SelectableMeal
+                            key={recipe.id}
+                            mealId={String(recipe.id)}
+                            mealName={recipe.name}
+                            servings={recipe.servings ?? 1}
+                            selected={selectedMealId === String(recipe.id)}
+                            onSelect={() => setSelectedMealId((id) => (id === String(recipe.id) ? null : String(recipe.id)))}
+                            />
+                        </div>
+                    ))
+                )}
+                {recipes.length > 10 && (
+                    <div className="min-w-[150px] shrink-0 flex items-center justify-center p-2 rounded-2xl border border-dashed border-palette-border hover:bg-gray-100 cursor-pointer transition-colors" onClick={() => setIsDialogOpen(true)}>
+                        <span className="text-sm font-bold text-palette-textMuted flex items-center gap-1"><Plus className="w-4 h-4"/> View All</span>
+                    </div>
+                )}
+            </div>
+        </div>
+
+        {/* Planner Grid */}
+        <div className="p-6">
+          {planLoading ? (
+            <p className="text-palette-textMuted font-medium text-center py-12">Loading your planner…</p>
           ) : (
-          <div className="overflow-x-auto">
-            {mealPlan.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-10 px-4 mb-4 rounded-lg bg-palette-cream/20 border border-palette-mist">
-                <Calendar className="h-12 w-12 text-palette-mist mb-3" aria-hidden />
-                <p className="text-lg font-medium text-palette-taupe mb-1">Plan your first week</p>
-                <p className="text-palette-slate text-sm mb-4 text-center">Add meals to each slot, then generate your shopping list.</p>
-                <Button onClick={() => setIsDialogOpen(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  View All Meals
-                </Button>
-              </div>
-            )}
-            {/* Desktop: wide table */}
-            <div className="hidden lg:block overflow-x-auto">
-            <div className="min-w-[800px]">
-              <div className="grid grid-cols-8 gap-2 mb-2">
-                <div className="font-semibold text-sm text-palette-slate" />
+          <div className="overflow-x-auto pb-2">
+            <div className="min-w-[900px]">
+              <div className="grid grid-cols-8 gap-4 mb-4">
+                <div className="font-semibold text-sm text-palette-textMuted" />
                 {DAYS.map((day) => (
-                  <div key={day} className="font-semibold text-sm text-palette-slate capitalize text-center">
-                    {day.slice(0, 3)}
+                  <div key={day} className="font-bold text-sm text-palette-text capitalize text-center mb-2">
+                    {day}
                   </div>
                 ))}
               </div>
               {SLOTS.map((slot) => (
-                <div key={slot} className="grid grid-cols-8 gap-2 mb-2">
-                  <div className="font-semibold text-sm text-palette-slate capitalize flex items-center">
+                <div key={slot} className="grid grid-cols-8 gap-4 mb-4">
+                  <div className="font-bold text-xs uppercase tracking-wider text-palette-textMuted flex items-center justify-end pr-4">
                     {slot}
                   </div>
                   {DAYS.map((day) => {
@@ -296,7 +273,7 @@ function MealPlanContent() {
                         planEntry={planEntry}
                         selectedMealId={selectedMealId}
                         onPlace={handlePlace}
-                        onRemoveRequest={handleRemoveRequest}
+                        onRemove={handleRemove}
                         onViewMeal={handleViewMeal}
                       />
                     );
@@ -304,110 +281,10 @@ function MealPlanContent() {
                 </div>
               ))}
             </div>
-            </div>
-            {mealPlan.length > 0 && (
-              <div className="lg:hidden space-y-4 mt-4">
-                {DAYS.map((day) => (
-                  <div key={day} className="border border-palette-mist rounded-lg p-3 bg-white">
-                    <div className="font-semibold text-palette-taupe capitalize mb-2">{day}</div>
-                    {SLOTS.map((slot) => {
-                      const planEntry = enrichedPlan.find((e) => e.day === day && e.slot === slot);
-                      return (
-                        <div
-                          key={slot}
-                          className="flex items-center justify-between gap-2 py-2 border-t border-palette-mist/50 first:border-t-0"
-                        >
-                          <span className="text-sm text-palette-slate capitalize shrink-0 w-20">{slot}</span>
-                          {planEntry ? (
-                            <div className="flex items-center gap-2 min-w-0 flex-1">
-                              <button
-                                type="button"
-                                onClick={() => handleViewMeal(planEntry.mealId)}
-                                className="font-medium text-palette-taupe text-sm truncate text-left hover:underline"
-                              >
-                                {planEntry.mealName}
-                              </button>
-                              <span className="text-xs text-palette-slate shrink-0">{planEntry.servings} servings</span>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveRequest({ id: planEntry.id, mealName: planEntry.mealName })}
-                                className="shrink-0 p-1 rounded text-red-600 hover:bg-red-50"
-                                aria-label="Remove from plan"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-                          ) : selectedMealId ? (
-                            <button
-                              type="button"
-                              onClick={() => handlePlace(day, slot)}
-                              className="text-sm text-palette-terracotta font-medium hover:underline"
-                            >
-                              Tap to add meal
-                            </button>
-                          ) : (
-                            <span className="text-palette-slate text-sm">—</span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
           )}
-        </CardContent>
-      </Card>
-
-      <Dialog open={!!confirmRemove} onOpenChange={(open) => !open && setConfirmRemove(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Remove from plan?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-palette-slate">
-            {confirmRemove ? `“${confirmRemove.mealName}” will be removed from this slot.` : ''}
-          </p>
-          <div className="flex gap-2 justify-end pt-4">
-            <Button variant="outline" onClick={() => setConfirmRemove(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="default"
-              className="bg-red-600 hover:bg-red-700 text-white"
-              onClick={handleConfirmRemove}
-            >
-              Remove
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="text-lg">Quick Add Meals</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {isLoading ? (
-              Array.from({ length: 10 }).map((_, i) => (
-                <Skeleton key={i} className="h-14 rounded-md" />
-              ))
-            ) : (
-              recipes.slice(0, 10).map((recipe) => (
-                <SelectableMeal
-                  key={recipe.id}
-                  mealId={String(recipe.id)}
-                  mealName={recipe.name}
-                  servings={recipe.servings ?? 1}
-                  selected={selectedMealId === String(recipe.id)}
-                  onSelect={() => setSelectedMealId((id) => (id === String(recipe.id) ? null : String(recipe.id)))}
-                />
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
