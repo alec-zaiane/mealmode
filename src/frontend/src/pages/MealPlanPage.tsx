@@ -84,7 +84,7 @@ function PlanSlot({ day, slot, planEntry, selectedMealId, onPlace, onRemoveReque
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onRemoveRequest({ id: planEntry.id, mealName: planEntry.mealName }); }}
-            className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute -top-1 -right-1 w-5 h-5 bg-palette-slate text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-DEFAULT hover:bg-palette-slate/90 shadow-card"
             aria-label="Remove from plan"
           >
             <X className="w-3 h-3" />
@@ -170,7 +170,7 @@ function MealPlanContent() {
     <div>
       <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h2 className="text-2xl font-semibold text-palette-taupe mb-2">Meal Plan</h2>
+          <h1 className="font-brand text-2xl font-semibold text-palette-taupe mb-2 tracking-tight">Meal Plan</h1>
           <p className="text-palette-slate">Click a meal, then click a slot to add it to your plan</p>
         </div>
         <div className="flex items-center gap-2">

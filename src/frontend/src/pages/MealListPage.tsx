@@ -33,7 +33,7 @@ type SelectedIngredient = { ingredientId: number; quantity: number; name: string
 
 function RecipeCardSkeleton() {
   return (
-    <Card className="relative border-2 border-palette-taupe/30 overflow-hidden h-full">
+    <Card className="relative overflow-hidden h-full">
       <div className="absolute top-0 right-0 w-24 h-24 bg-palette-cream/20 rounded-bl-full transform translate-x-12 -translate-y-12" aria-hidden />
       <CardHeader className="relative z-10 pb-2">
         <Skeleton className="h-6 w-3/4" />
@@ -181,7 +181,7 @@ export function MealListPage() {
         <div className="flex items-center justify-between gap-4 mb-2">
           <div className="flex items-center gap-3">
             <UtensilsCrossed className="h-7 w-7 text-palette-terracotta shrink-0" aria-hidden />
-            <h2 className="text-2xl font-semibold text-palette-taupe">Meals</h2>
+            <h1 className="font-brand text-2xl font-semibold text-palette-taupe tracking-tight">Meals</h1>
           </div>
           <Dialog open={addMealOpen} onOpenChange={setAddMealOpen}>
             <DialogTrigger asChild>
@@ -350,63 +350,75 @@ export function MealListPage() {
           </DialogContent>
         </Dialog>
         </div>
-        <p className="text-palette-slate">Browse and search your meal collection</p>
+        <p className="text-palette-slate text-sm">Browse and search your meal collection</p>
       </div>
 
-      <div className="mb-6">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-palette-slate" />
-          <Input
-            type="text"
-            placeholder="Search meals..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-
-        <div className="flex flex-wrap gap-3 items-center">
-          <div className="flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-palette-slate" />
+      <Card className="mb-6 p-4">
+        <div className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-palette-slate/80" />
             <Input
-              type="number"
-              placeholder="Max cost/serving"
-              value={maxCost ?? ''}
-              onChange={(e) => setMaxCost(e.target.value ? Number(e.target.value) : null)}
-              className="w-40"
-              step="0.5"
+              type="text"
+              placeholder="Search meals..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <Flame className="w-4 h-4 text-palette-slate" />
-            <Input
-              type="number"
-              placeholder="Max calories"
-              value={maxCalories ?? ''}
-              onChange={(e) => setMaxCalories(e.target.value ? Number(e.target.value) : null)}
-              className="w-40"
-            />
-          </div>
-          {selectedTags.length > 0 && (
-            <Button variant="outline" size="sm" onClick={() => setSelectedTags([])}>
-              Clear filters
-            </Button>
-          )}
-        </div>
 
-        <div className="flex flex-wrap gap-2">
-          {tagData?.data.results?.map((tag) => (
-            <Badge
-              key={tag.id}
-              variant={selectedTags.includes(tag) ? 'default' : 'outline'}
-              className="cursor-pointer"
-              onClick={() => toggleTag(tag)}
-            >
-              {tag.name}
-            </Badge>
-          ))}
+          <div className="flex flex-wrap gap-3 items-center">
+            <div className="flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-palette-slate/80" />
+              <Input
+                type="number"
+                placeholder="Max cost/serving"
+                value={maxCost ?? ''}
+                onChange={(e) => setMaxCost(e.target.value ? Number(e.target.value) : null)}
+                className="w-40"
+                step="0.5"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Flame className="w-4 h-4 text-palette-slate/80" />
+              <Input
+                type="number"
+                placeholder="Max calories"
+                value={maxCalories ?? ''}
+                onChange={(e) => setMaxCalories(e.target.value ? Number(e.target.value) : null)}
+                className="w-40"
+              />
+            </div>
+            {selectedTags.length > 0 && (
+              <Button variant="outline" size="sm" onClick={() => setSelectedTags([])}>
+                Clear filters
+              </Button>
+            )}
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-palette-taupe mb-2">Filter by tags</p>
+            <div className="flex flex-wrap gap-2">
+              <Badge
+                variant={selectedTags.length === 0 ? 'default' : 'outline'}
+                className="cursor-pointer"
+                onClick={() => setSelectedTags([])}
+              >
+                All
+              </Badge>
+              {tagData?.data.results?.map((tag) => (
+                <Badge
+                  key={tag.id}
+                  variant={selectedTags.includes(tag) ? 'default' : 'outline'}
+                  className="cursor-pointer"
+                  onClick={() => toggleTag(tag)}
+                >
+                  {tag.name}
+                </Badge>
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
+      </Card>
       {recipeIsError && (
         <div className="text-center py-12 text-palette-slate">Failed to load meals. Please try again.</div>
       )}
