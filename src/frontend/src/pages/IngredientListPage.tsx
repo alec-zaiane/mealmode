@@ -39,7 +39,7 @@ export function IngredientListPage() {
         <div className="mb-8">
             <div className="flex items-center gap-3 mb-2">
                 <Warehouse className="h-7 w-7 text-palette-terracotta shrink-0" aria-hidden />
-                <h2 className="text-2xl font-semibold text-palette-taupe">Ingredients</h2>
+                <h1 className="font-brand text-2xl font-semibold text-palette-taupe tracking-tight">Ingredients</h1>
             </div>
             <p className="text-palette-slate">View and manage your pantry items, nutrition, and what’s on hand.</p>
         </div>

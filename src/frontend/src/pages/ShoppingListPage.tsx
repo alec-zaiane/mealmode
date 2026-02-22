@@ -94,10 +94,10 @@ function ShoppingListContent() {
     <div>
       <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h2 className="text-2xl font-semibold text-palette-taupe mb-2 flex items-center gap-2">
+          <h1 className="font-brand text-2xl font-semibold text-palette-taupe mb-2 flex items-center gap-2 tracking-tight">
             <ShoppingCart className="h-7 w-7 text-palette-terracotta" aria-hidden />
             Shopping List
-          </h2>
+          </h1>
           <p className="text-palette-slate">
             {isEmpty
               ? 'Add meals to your meal plan, then generate your list.'

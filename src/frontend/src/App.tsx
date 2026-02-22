@@ -13,26 +13,26 @@ import { ChefHat, UtensilsCrossed, Calendar, Warehouse, ShoppingCart } from 'luc
 function Layout() {
   return (
     <div className="min-h-screen bg-palette-mist">
-      <nav className="border-b border-palette-mist bg-white">
+      <nav className="sticky top-0 z-30 border-b border-white/15 bg-palette-taupe shadow-card">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-14 items-center gap-6">
             <NavLink
               to="/"
               end
               className={({ isActive }) =>
-                `flex items-center gap-2 font-brand text-xl font-semibold tracking-tight ${isActive ? 'text-palette-terracotta' : 'text-palette-slate hover:text-palette-terracotta'}`
+                `flex items-center gap-2 font-brand text-xl font-semibold tracking-tight transition-colors duration-DEFAULT ${isActive ? 'text-palette-cream' : 'text-white hover:text-palette-cream'}`
               }
             >
-              <ChefHat className="h-6 w-6 shrink-0 text-palette-terracotta" aria-hidden />
+              <ChefHat className="h-6 w-6 shrink-0 text-palette-cream" aria-hidden />
               <span>MealMode</span>
             </NavLink>
-            <span className="h-5 w-px bg-palette-mist/60" aria-hidden />
-            <div className="ml-auto flex items-center gap-6">
+            <span className="h-5 w-px bg-white/25" aria-hidden />
+            <div className="ml-auto flex items-center gap-1">
               <NavLink
                 to="/"
                 end
                 className={({ isActive }) =>
-                  `flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${isActive ? 'bg-palette-cream/20 text-palette-terracotta' : 'text-palette-slate hover:bg-palette-cream/10 hover:text-palette-mist'}`
+                  `flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-DEFAULT ${isActive ? 'bg-white/15 text-palette-cream' : 'text-white/90 hover:bg-white/10 hover:text-white'}`
                 }
               >
                 <UtensilsCrossed className="w-5 h-5" />
@@ -41,7 +41,7 @@ function Layout() {
               <NavLink
                 to="/plan"
                 className={({ isActive }) =>
-                  `flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${isActive ? 'bg-palette-cream/20 text-palette-terracotta' : 'text-palette-slate hover:bg-palette-cream/10 hover:text-palette-mist'}`
+                  `flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-DEFAULT ${isActive ? 'bg-white/15 text-palette-cream' : 'text-white/90 hover:bg-white/10 hover:text-white'}`
                 }
               >
                 <Calendar className="w-5 h-5" />
@@ -50,7 +50,7 @@ function Layout() {
               <NavLink
                 to="/ingredients"
                 className={({ isActive }) =>
-                  `flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${isActive ? 'bg-palette-cream/20 text-palette-terracotta' : 'text-palette-slate hover:bg-palette-cream/10 hover:text-palette-mist'}`
+                  `flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-DEFAULT ${isActive ? 'bg-white/15 text-palette-cream' : 'text-white/90 hover:bg-white/10 hover:text-white'}`
                 }
               >
                 <Warehouse className="w-5 h-5" />
@@ -59,7 +59,7 @@ function Layout() {
               <NavLink
                 to="/shopping"
                 className={({ isActive }) =>
-                  `flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${isActive ? 'bg-palette-cream/20 text-palette-terracotta' : 'text-palette-slate hover:bg-palette-cream/10 hover:text-palette-mist'}`
+                  `flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-DEFAULT ${isActive ? 'bg-white/15 text-palette-cream' : 'text-white/90 hover:bg-white/10 hover:text-white'}`
                 }
               >
                 <ShoppingCart className="w-5 h-5" />

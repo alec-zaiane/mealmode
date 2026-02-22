@@ -1,3 +1,16 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply text-palette-taupe antialiased;
+  }
+  /* Consistent focus ring for keyboard nav */
+  :focus-visible {
+    @apply outline-none ring-2 ring-palette-terracotta ring-offset-2 ring-offset-white;
+  }
+}

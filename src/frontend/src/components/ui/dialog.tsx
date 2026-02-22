@@ -60,13 +60,13 @@ export function DialogContent({
   return (
     <>
       <div
-        className="fixed inset-0 z-40 bg-black/50"
+        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-200"
         onClick={() => { ctx.setOpen(false); onClose?.(); }}
         aria-hidden
       />
       <div
         role="dialog"
-        className={`fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-lg border border-palette-mist bg-white p-6 shadow-lg ${className}`}
+        className={`fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-palette-mist/60 bg-white p-6 shadow-dialog ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
         {children}
@@ -80,5 +80,5 @@ export function DialogHeader({ children, className = '' }: { children: ReactNode
 }
 
 export function DialogTitle({ children }: { children: ReactNode }) {
-  return <h2 className="text-lg font-semibold">{children}</h2>;
+  return <h2 className="font-brand text-lg font-semibold text-palette-taupe">{children}</h2>;
 }
