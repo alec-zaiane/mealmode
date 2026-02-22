@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+import { useToast } from '../context/ToastContext';
 import { useRecipesList } from '../api/mealmodeAPI';
 import type { Recipe } from '../api/mealmodeAPI';
 import { useNavigate } from 'react-router-dom';
-import { X, Plus, Search } from 'lucide-react';
+import { X, Plus, Search, Calendar } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -14,6 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../components/ui/dialog';
+import { Skeleton } from '../components/ui/skeleton';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const SLOTS = ['breakfast', 'lunch', 'dinner'];
@@ -49,11 +51,11 @@ interface PlanSlotProps {
   planEntry?: { id: string; mealId: string; mealName: string; servings: number };
   selectedMealId: string | null;
   onPlace: (day: string, slot: string) => void;
-  onRemove: (entryId: string) => void;
+  onRemoveRequest: (entry: { id: string; mealName: string }) => void;
   onViewMeal: (mealId: string) => void;
 }
 
-function PlanSlot({ day, slot, planEntry, selectedMealId, onPlace, onRemove, onViewMeal }: PlanSlotProps) {
+function PlanSlot({ day, slot, planEntry, selectedMealId, onPlace, onRemoveRequest, onViewMeal }: PlanSlotProps) {
   const isEmpty = !planEntry;
   const canPlace = selectedMealId && isEmpty;
 
@@ -81,8 +83,9 @@ function PlanSlot({ day, slot, planEntry, selectedMealId, onPlace, onRemove, onV
         <div className="relative group">
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onRemove(planEntry.id); }}
+            onClick={(e) => { e.stopPropagation(); onRemoveRequest({ id: planEntry.id, mealName: planEntry.mealName }); }}
             className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            aria-label="Remove from plan"
           >
             <X className="w-3 h-3" />
           </button>
@@ -105,8 +108,10 @@ function PlanSlot({ day, slot, planEntry, selectedMealId, onPlace, onRemove, onV
 
 function MealPlanContent() {
   const navigate = useNavigate();
+  const toast = useToast();
   const { mealPlan, isLoading: planLoading, addMealToPlan, removeMealFromPlan } = useApp();
   const { data: recipeData, isLoading } = useRecipesList();
+  const [confirmRemove, setConfirmRemove] = useState<{ id: string; mealName: string } | null>(null);
   const recipes = useMemo((): Recipe[] => {
     const body =
       recipeData && typeof recipeData === 'object' && 'data' in recipeData
@@ -129,11 +134,21 @@ function MealPlanContent() {
     const existingEntry = mealPlan.find((entry) => entry.day === day && entry.slot === slot);
     if (existingEntry) removeMealFromPlan(existingEntry.id);
     const recipe = recipes.find((r) => String(r.id) === selectedMealId);
-    if (recipe) addMealToPlan({ mealId: selectedMealId, day, slot, servings: recipe.servings ?? 1 });
+    if (recipe) {
+      addMealToPlan({ mealId: selectedMealId, day, slot, servings: recipe.servings ?? 1 });
+      toast('Plan updated');
+    }
     setSelectedMealId(null);
   };
 
-  const handleRemove = (entryId: string) => removeMealFromPlan(entryId);
+  const handleRemoveRequest = (entry: { id: string; mealName: string }) => setConfirmRemove(entry);
+  const handleConfirmRemove = () => {
+    if (confirmRemove) {
+      removeMealFromPlan(confirmRemove.id);
+      toast('Removed from plan');
+      setConfirmRemove(null);
+    }
+  };
   const handleViewMeal = (mealId: string) => navigate(`/meal/${mealId}`);
 
   const enrichedPlan = mealPlan.map((entry) => {
@@ -174,7 +189,11 @@ function MealPlanContent() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
               {isLoading ? (
-                <p className="text-palette-slate col-span-2">Loading meals…</p>
+                <>
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <Skeleton key={i} className="h-16 rounded-md" />
+                  ))}
+                </>
               ) : (
                 filteredRecipesForDialog.map((recipe) => (
                   <SelectableMeal
@@ -199,9 +218,37 @@ function MealPlanContent() {
       <Card>
         <CardContent className="p-4">
           {planLoading ? (
-            <p className="text-palette-slate py-4">Loading plan…</p>
+            <div className="overflow-x-auto py-4">
+              <div className="min-w-[800px]">
+                <div className="grid grid-cols-8 gap-2 mb-2">
+                  <div />
+                  {DAYS.map((d) => (
+                    <Skeleton key={d} className="h-4 rounded" />
+                  ))}
+                </div>
+                {SLOTS.map((slot) => (
+                  <div key={slot} className="grid grid-cols-8 gap-2 mb-2">
+                    <Skeleton className="h-4 w-16" />
+                    {DAYS.map((day) => (
+                      <Skeleton key={day} className="min-h-20 rounded" />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : (
           <div className="overflow-x-auto">
+            {mealPlan.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-10 px-4 mb-4 rounded-lg bg-palette-cream/20 border border-palette-mist">
+                <Calendar className="h-12 w-12 text-palette-mist mb-3" aria-hidden />
+                <p className="text-lg font-medium text-palette-taupe mb-1">No meals on your plan yet</p>
+                <p className="text-palette-slate text-sm mb-4 text-center">Pick a meal from the list, then click a slot to add it.</p>
+                <Button onClick={() => setIsDialogOpen(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  View All Meals
+                </Button>
+              </div>
+            )}
             <div className="min-w-[800px]">
               <div className="grid grid-cols-8 gap-2 mb-2">
                 <div className="font-semibold text-sm text-palette-slate" />
@@ -228,7 +275,7 @@ function MealPlanContent() {
                         planEntry={planEntry}
                         selectedMealId={selectedMealId}
                         onPlace={handlePlace}
-                        onRemove={handleRemove}
+                        onRemoveRequest={handleRemoveRequest}
                         onViewMeal={handleViewMeal}
                       />
                     );
@@ -241,6 +288,29 @@ function MealPlanContent() {
         </CardContent>
       </Card>
 
+      <Dialog open={!!confirmRemove} onOpenChange={(open) => !open && setConfirmRemove(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Remove from plan?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-palette-slate">
+            {confirmRemove ? `“${confirmRemove.mealName}” will be removed from this slot.` : ''}
+          </p>
+          <div className="flex gap-2 justify-end pt-4">
+            <Button variant="outline" onClick={() => setConfirmRemove(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="default"
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={handleConfirmRemove}
+            >
+              Remove
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Card className="mt-6">
         <CardHeader>
           <CardTitle className="text-lg">Quick Add Meals</CardTitle>
@@ -248,7 +318,9 @@ function MealPlanContent() {
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {isLoading ? (
-              <p className="text-palette-slate">Loading…</p>
+              Array.from({ length: 10 }).map((_, i) => (
+                <Skeleton key={i} className="h-14 rounded-md" />
+              ))
             ) : (
               recipes.slice(0, 10).map((recipe) => (
                 <SelectableMeal

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, NavLink, Outlet } from 'react-router-dom';
 import { AppProvider } from './context/AppContext';
+import { ToastProvider } from './context/ToastContext';
 import { MealPlanPage } from './pages/MealPlanPage';
 import { MealListPage } from './pages/MealListPage';
 import { MealDetailPage } from './pages/MealDetailPage';
@@ -72,6 +73,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AppProvider>
+          <ToastProvider>
           <Routes>
             <Route element={<Layout />}>
               <Route index element={<MealListPage />} />
@@ -81,6 +83,7 @@ export default function App() {
               <Route path="ingredients" element={<IngredientListPage />} />
             </Route>
           </Routes>
+          </ToastProvider>
         </AppProvider>
       </BrowserRouter>
     </QueryClientProvider>
