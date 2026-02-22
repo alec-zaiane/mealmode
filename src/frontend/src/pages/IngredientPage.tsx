@@ -506,9 +506,11 @@ export function IngredientPage() {
           {usedInRecipes.length === 0 ? (
             <p className="text-sm text-palette-slate">Not used in any recipes.</p>
           ) : (
-            usedInRecipes.map(recipe => (
-              <RecipeCard key={recipe.id} recipe={recipe} />
-            ))
+            <div className="grid grid-cols-1 gap-4">
+              {usedInRecipes.map(recipe => (
+                <RecipeCard key={recipe.id} recipe={recipe} />
+              ))}
+            </div>
           )}
         </div>
 
