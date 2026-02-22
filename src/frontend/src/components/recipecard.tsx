@@ -1,49 +1,92 @@
 import type { Recipe } from "../api/mealmodeAPI";
 import { Card, CardHeader, CardContent, CardTitle } from "./ui/card";
 import { useNavigate } from "react-router-dom";
-import { DollarSign, Flame } from 'lucide-react';
+import { DollarSign, Flame, Clock, UtensilsCrossed } from 'lucide-react';
 import { Badge } from "./ui/badge";
 import { calculateRecipeCost, calculateRecipeNutrition } from "../utils/calculations";
 
-export function RecipeCard({ recipe }: { recipe: Recipe }) {
+// Helper to generate a deterministic flat color based on a string
+function getFlatColorFromName(name: string) {
+    const colors = [
+        "bg-gradient-to-br from-rose-400 to-rose-300",
+        "bg-gradient-to-br from-sky-400 to-sky-300",
+        "bg-gradient-to-br from-amber-400 to-amber-300",
+        "bg-gradient-to-br from-emerald-400 to-emerald-300",
+        "bg-gradient-to-br from-indigo-400 to-indigo-300",
+        "bg-gradient-to-br from-orange-400 to-orange-300",
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % colors.length;
+    return colors[index];
+}
+
+export function RecipeCard({ recipe, compact = false }: { recipe: Recipe; compact?: boolean }) {
     const navigate = useNavigate();
     const { costPerServing, costPartiallyUnknown } = calculateRecipeCost(recipe);
     const { nutritionPerServing } = calculateRecipeNutrition(recipe);
+    const coverColor = getFlatColorFromName(recipe.name);
 
-    return (<Card
-        key={recipe.id}
-        className="relative overflow-hidden group border border-palette-mist/60 hover:shadow-card-hover hover:scale-[1.01] transition-all duration-DEFAULT cursor-pointer h-full hover:border-palette-terracotta/30 hover:bg-palette-lightblue/40"
-        onClick={() => navigate(`/meal/${recipe.id}`)}
-    >
-        <div className="absolute top-0 right-0 w-28 h-28 bg-palette-cream/25 rounded-bl-full transform translate-x-14 -translate-y-14 group-hover:translate-x-10 group-hover:-translate-y-10 transition-transform duration-DEFAULT" aria-hidden />
-        <CardHeader className="relative z-10 pb-2">
-            <CardTitle className="font-brand text-xl">{recipe.name}</CardTitle>
-        </CardHeader>
-        <CardContent className="relative z-10 pt-0">
-            <div className="space-y-4">
-                <div className="flex justify-between items-center text-sm">
-                    <div className="flex items-center gap-1 text-palette-slate">
-                        <DollarSign className="w-4 h-4" />
-                        <span>{costPerServing.toFixed(2)}/serving{costPartiallyUnknown && "?"}</span>
+    return (
+        <Card
+            key={recipe.id}
+            className={`flex flex-col overflow-hidden border border-palette-border bg-white shadow-soft cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 rounded-2xl ${compact ? '' : 'h-full'}`}
+            onClick={() => navigate(`/meal/${recipe.id}`)}
+        >
+            {/* "Cover Image" Gradient Area */}
+            <div className={`w-full ${coverColor} ${compact ? 'h-20 p-3' : 'h-40 p-4'} flex flex-col justify-between`}>
+                <div className="flex justify-end gap-2">
+                    {/* Cost Badge */}
+                    <div className="bg-white/95 backdrop-blur-sm rounded-xl px-2.5 py-1.5 flex items-center gap-1 shadow-sm">
+                        <DollarSign className="w-3.5 h-3.5 text-palette-amber" />
+                        <span className="text-xs font-bold text-palette-text">
+                            {costPerServing.toFixed(2)}{costPartiallyUnknown && "?"}
+                        </span>
                     </div>
-                    <div className="flex items-center gap-1 text-palette-terracotta">
-                        <Flame className="w-4 h-4" />
-                        <span>{Math.round(nutritionPerServing.kcal_per_unit)} Kcal/serving</span>
+                    {/* Calories Badge */}
+                    <div className="bg-white/95 backdrop-blur-sm rounded-xl px-2.5 py-1.5 flex items-center gap-1 shadow-sm">
+                        <Flame className="w-3.5 h-3.5 text-palette-emerald" />
+                        <span className="text-xs font-bold text-palette-text">
+                            {Math.round(nutritionPerServing.kcal_per_unit)}
+                        </span>
                     </div>
                 </div>
-                <div className="text-sm text-palette-slate">{recipe.servings} servings</div>
-                <div className="flex flex-wrap gap-1">
-                    {recipe.tags.map((tag) => (
-                        <Badge key={tag.id} variant="secondary" className="text-xs">
+            </div>
+            
+            <CardHeader className={compact ? 'pt-3 pb-1 px-4' : 'pt-5 pb-2 px-5'}>
+                <CardTitle className={`${compact ? 'text-lg' : 'text-xl'} font-brand font-bold text-palette-text leading-tight line-clamp-2`}>
+                    {recipe.name}
+                </CardTitle>
+            </CardHeader>
+            <CardContent className={`${compact ? 'pb-3 px-4' : 'flex flex-col flex-1 pb-5 px-5'}`}>
+                <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-semibold text-palette-textMuted ${compact ? 'mb-2' : 'mb-4'}`}>
+                    <span className="flex items-center gap-1.5">
+                        <UtensilsCrossed className="w-4 h-4 text-palette-primary/80" />
+                        {recipe.servings} serving{recipe.servings === 1 ? '' : 's'}
+                    </span>
+                    {(recipe.prep_time_minutes || recipe.cook_time_minutes) ? (
+                        <span className="flex items-center gap-1.5">
+                            <Clock className="w-4 h-4 text-palette-primary/80" />
+                            {(recipe.prep_time_minutes || 0) + (recipe.cook_time_minutes || 0)} min
+                        </span>
+                    ) : null}
+                </div>
+                
+                <div className={`${compact ? 'pt-1' : 'mt-auto pt-3'} flex flex-wrap gap-1.5`}>
+                    {recipe.tags.slice(0, 3).map((tag) => (
+                        <Badge key={tag.id} variant="secondary" className="text-[10px] px-2.5 py-0.5 bg-palette-background text-palette-textMuted border border-palette-border font-semibold hover:bg-gray-100 transition-colors">
                             {tag.name}
                         </Badge>
                     ))}
+                    {recipe.tags.length > 3 && (
+                        <Badge variant="secondary" className="text-[10px] px-2.5 py-0.5 bg-palette-background text-palette-textMuted border border-palette-border font-semibold">
+                            +{recipe.tags.length - 3}
+                        </Badge>
+                    )}
                 </div>
-                <div className="text-xs text-palette-taupe flex gap-2">
-                    {recipe.prep_time_minutes && (<div>Prep time: {recipe.prep_time_minutes}m</div>)}
-                    {recipe.cook_time_minutes && (<div>Cook time: {recipe.cook_time_minutes}m</div>)}
-                </div>
-            </div>
-        </CardContent>
-    </Card>)
+            </CardContent>
+        </Card>
+    );
 }

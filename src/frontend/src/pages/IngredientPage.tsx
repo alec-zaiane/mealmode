@@ -14,8 +14,6 @@ import {
   useSourcesCreate,
   useSourcesDestroy,
   getIngredientsRetrieveQueryKey,
-  getRecipesListQueryKey,
-  getSourcesListQueryKey,
   QuantityUnitEnum,
 } from '../api/mealmodeAPI';
 import type { Ingredient, OnHandIngredient } from '../api/mealmodeAPI';
@@ -27,7 +25,28 @@ import { multiplyNutritionStats } from '../utils/calculations';
 import { fetchAllPages } from '../utils/api';
 import { Card } from '../components/ui/card';
 import { Breadcrumbs } from '../components/Breadcrumbs';
-import { Skeleton } from '../components/ui/skeleton';
+
+function getApiErrorMessage(err: unknown, fallback: string): string {
+  const data = (err as { response?: { data?: unknown } })?.response?.data;
+  if (typeof data === 'string') return data;
+  if (!data || typeof data !== 'object') return fallback;
+
+  const maybeDetail = (data as { detail?: unknown }).detail;
+  if (typeof maybeDetail === 'string') return maybeDetail;
+
+  const entries = Object.entries(data as Record<string, unknown>);
+  if (entries.length === 0) return fallback;
+
+  const formatted = entries
+    .map(([field, value]) => {
+      if (Array.isArray(value)) return `${field}: ${value.map(String).join(', ')}`;
+      if (typeof value === 'string') return `${field}: ${value}`;
+      return null;
+    })
+    .filter((msg): msg is string => msg != null);
+
+  return formatted.length > 0 ? formatted.join(' | ') : fallback;
+}
 
 function CostForm({
   ingredient,
@@ -47,7 +66,8 @@ function CostForm({
   const [newSourceUrl, setNewSourceUrl] = useState('');
   const [newSourceQuantity, setNewSourceQuantity] = useState('1');
   const [newSourceUnit, setNewSourceUnit] = useState<QuantityUnitEnum>(QuantityUnitEnum.kg);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [sourceErrorMessage, setSourceErrorMessage] = useState<string | null>(null);
+  const [optimisticallyRemovedSourceIds, setOptimisticallyRemovedSourceIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     setEstimatedCost(ingredient.estimated_cost == null ? '' : String(ingredient.estimated_cost));
@@ -58,12 +78,6 @@ function CostForm({
     onSaved();
   }, [queryClient, ingredientId, onSaved]);
 
-  const invalidateAll = useCallback(() => {
-    invalidate();
-    queryClient.invalidateQueries({ queryKey: getRecipesListQueryKey() });
-    queryClient.invalidateQueries({ queryKey: getSourcesListQueryKey() });
-  }, [invalidate, queryClient]);
-
   const patchIngredient = useIngredientsPartialUpdate({
     mutation: { onSuccess: () => { setEditingCost(false); invalidate(); } },
   });
@@ -71,23 +85,33 @@ function CostForm({
   const createSource = useSourcesCreate({
     mutation: {
       onSuccess: () => {
+        setSourceErrorMessage(null);
         setShowAddSource(false);
         setNewSourceUrl('');
         setNewSourceQuantity('1');
-        invalidateAll();
+        setOptimisticallyRemovedSourceIds(new Set());
+        invalidate();
+      },
+      onError: (err: unknown) => {
+        setSourceErrorMessage(getApiErrorMessage(err, 'Failed to add source.'));
       },
     },
   });
   const destroySource = useSourcesDestroy({
-    mutation: { onSuccess: () => { setDeleteConfirmId(null); invalidateAll(); } },
+    mutation: {
+      onSuccess: () => {
+        setSourceErrorMessage(null);
+        setOptimisticallyRemovedSourceIds(new Set());
+        invalidate();
+      },
+      onError: (err: unknown) => {
+        setSourceErrorMessage(getApiErrorMessage(err, 'Failed to delete source.'));
+      },
+    },
   });
 
   const refreshScraper = useScrapersRefreshCreate({
-    mutation: {
-      onSuccess: () => {
-        invalidateAll();
-      },
-    },
+    mutation: { onSuccess: invalidate },
   });
 
   const handleRefresh = () => {
@@ -96,7 +120,9 @@ function CostForm({
     }
   };
 
-  const sources = ingredient.scraper?.sources ?? [];
+  const sources = (ingredient.scraper?.sources ?? []).filter(
+    (src) => !optimisticallyRemovedSourceIds.has(src.id)
+  );
   const unit = ingredient.nutrition_stats?.base_unit ?? 'unit';
 
   const handleSaveCost = () => {
@@ -106,10 +132,26 @@ function CostForm({
 
   const handleAddSource = () => {
     if (!newSourceUrl.trim()) return;
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(newSourceUrl.trim());
+    } catch {
+      setSourceErrorMessage('Enter a valid URL starting with http:// or https://');
+      return;
+    }
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      setSourceErrorMessage('URL must start with http:// or https://');
+      return;
+    }
+    if (newSourceUrl.trim().length > 500) {
+      setSourceErrorMessage('URL is too long. Maximum length is 500 characters.');
+      return;
+    }
+    setSourceErrorMessage(null);
     const qty = Number.parseFloat(newSourceQuantity) || 1;
     const doCreate = (scraperId: number) => {
       createSource.mutate({
-        data: { scraper: scraperId, url: newSourceUrl.trim().split('?')[0], quantity: qty, quantity_unit: newSourceUnit },
+        data: { scraper: scraperId, url: parsedUrl.toString(), quantity: qty, quantity_unit: newSourceUnit },
       });
     };
     if (ingredient.scraper?.id != null) {
@@ -128,32 +170,50 @@ function CostForm({
   };
 
   const isAddPending = createSource.isPending || createScraper.isPending;
+  const isDeletePending = destroySource.isPending;
+
+  const handleDeleteSource = (sourceId: number) => {
+    setSourceErrorMessage(null);
+    setOptimisticallyRemovedSourceIds((prev) => new Set(prev).add(sourceId));
+    destroySource.mutate(
+      { id: sourceId },
+      {
+        onError: () => {
+          setOptimisticallyRemovedSourceIds((prev) => {
+            const next = new Set(prev);
+            next.delete(sourceId);
+            return next;
+          });
+        },
+      }
+    );
+  };
 
   return (
-    <Card className="p-4 space-y-4">
+    <Card className="h-full min-h-[24rem] md:min-h-[28rem] p-4 space-y-4">
       <h3 className="font-semibold">Cost</h3>
 
       {/* Best scraped price */}
       {ingredient.scraper && (
-        <div className="flex items-center justify-between rounded-md bg-palette-cream/50 border border-palette-mist px-3 py-2">
+        <div className="flex items-center justify-between rounded-md bg-palette-background/50 border border-palette-border px-3 py-2">
           <div>
-            <p className="text-xs text-palette-slate mb-0.5">Best found price</p>
+            <p className="text-xs text-palette-textMuted mb-0.5">Best found price</p>
             {ingredient.scraper.cached_price != null ? (
-              <p className="text-sm font-semibold text-palette-taupe">
+              <p className="text-sm font-semibold text-palette-text">
                 ${ingredient.scraper.cached_price.toFixed(2)}&nbsp;/&nbsp;{unit}
                 {ingredient.scraper.cached_source?.url && (
                   <a
                     href={ingredient.scraper.cached_source.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="ml-2 text-xs font-normal text-palette-slate hover:underline truncate max-w-[200px] inline-block align-middle"
+                    className="ml-2 text-xs font-normal text-palette-textMuted hover:underline truncate max-w-[200px] inline-block align-middle"
                   >
                     {new URL(ingredient.scraper.cached_source.url).hostname}
                   </a>
                 )}
               </p>
             ) : (
-              <p className="text-sm text-palette-slate">No price scraped yet</p>
+              <p className="text-sm text-palette-textMuted">No price scraped yet</p>
             )}
           </div>
           <Button
@@ -171,7 +231,7 @@ function CostForm({
 
       {/* Estimated cost */}
       <div className="flex items-center gap-2">
-        <label className="w-36 text-sm shrink-0">Estimated cost</label>
+        <label className="w-36 text-sm text-palette-textMuted font-medium shrink-0">Estimated cost</label>
         {editingCost ? (
           <div className="flex items-center gap-2 flex-1">
             <Input
@@ -184,7 +244,7 @@ function CostForm({
               placeholder="e.g. 3.50"
               autoFocus
             />
-            <span className="text-sm text-palette-slate shrink-0">/ {unit}</span>
+            <span className="text-sm text-palette-textMuted shrink-0">/ {unit}</span>
           </div>
         ) : (
           <span className="text-sm font-medium flex-1">
@@ -221,7 +281,7 @@ function CostForm({
         </div>
 
         {showAddSource && (
-          <div className="p-3 border border-palette-mist rounded-md bg-palette-cream/30 space-y-2">
+          <div className="p-3 border border-palette-border rounded-md bg-palette-background/30 space-y-2">
             <Input
               placeholder="URL (e.g. https://store.com/product)"
               value={newSourceUrl}
@@ -261,53 +321,54 @@ function CostForm({
             </div>
           </div>
         )}
+        {sourceErrorMessage && (
+          <p className="text-xs text-red-600">{sourceErrorMessage}</p>
+        )}
 
         {sources.length === 0 ? (
-          <p className="text-sm text-palette-slate">No sources added yet.</p>
+          <p className="text-sm text-palette-textMuted">No sources added yet.</p>
         ) : (
-          <ul className="space-y-2">
-            {sources.map(src => (
-              <li key={src.id} className={`text-sm border rounded-md p-2 flex items-center gap-2 ${src.cached_error ? 'border-amber-400 bg-amber-50' : 'border-palette-mist'}`}>
-                {deleteConfirmId === src.id ? (
-                  <>
-                    <span className="flex-1 text-red-600 text-xs">Remove this source?</span>
-                    <Button
-                      size="sm" variant="ghost"
-                      className="h-6 px-2 text-xs text-red-600 hover:bg-red-50"
-                      onClick={() => destroySource.mutate({ id: src.id })}
-                    >Yes</Button>
-                    <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => setDeleteConfirmId(null)}>No</Button>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex-1 min-w-0">
-                      <a
-                        href={src.url} target="_blank" rel="noopener noreferrer"
-                        className="text-palette-taupe hover:underline truncate block text-xs"
-                      >
-                        {src.url}
-                      </a>
-                      <span className="text-palette-slate text-xs">
-                        {src.quantity} {src.quantity_unit}
-                        {src.cached_price == null ? '' : ` · $${src.cached_price.toFixed(2)} / ${unit}`}
-                      </span>
-                      {src.cached_error && (
-                        <div className="flex items-center gap-1 mt-1 text-amber-700 text-xs">
-                          <AlertTriangle className="w-3 h-3 shrink-0" />
-                          <span>{src.cached_error}</span>
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      className="text-palette-slate hover:text-red-500 shrink-0 p-1"
-                      onClick={() => setDeleteConfirmId(src.id)}
-                      aria-label="Delete source"
+          <ul className="space-y-2 max-h-96 overflow-y-auto pr-1">
+            {sources.map((src) => (
+              <li
+                key={src.id}
+                className={`text-sm border rounded-md p-2 flex items-center gap-2 ${
+                  src.cached_error
+                    ? 'border-yellow-300 bg-yellow-50'
+                    : 'border-palette-border'
+                }`}
+              >
+                <>
+                  <div className="flex-1 min-w-0">
+                    <a
+                      href={src.url} target="_blank" rel="noopener noreferrer"
+                      className="text-palette-text hover:underline truncate block text-xs"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </>
-                )}
+                      {src.url}
+                    </a>
+                    <span className="text-palette-textMuted text-xs">
+                      {src.quantity} {src.quantity_unit}
+                      {src.cached_price == null ? '' : ` · $${src.cached_price.toFixed(2)} / ${unit}`}
+                    </span>
+                    {src.cached_error && (
+                      <div className="mt-1 flex items-start gap-1.5 text-yellow-900">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <span className="text-xs font-medium break-words">
+                          {src.cached_error}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    className="text-palette-textMuted hover:text-red-500 shrink-0 p-1 disabled:opacity-50"
+                    onClick={() => handleDeleteSource(src.id)}
+                    aria-label="Delete source"
+                    disabled={isDeletePending}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </>
               </li>
             ))}
           </ul>
@@ -379,8 +440,8 @@ function OnHandForm({
 
   function field(label: string, key: keyof OnHandFormValues, unit?: string) {
     return (
-      <div className="flex items-center gap-2">
-        <label className="w-36 text-sm shrink-0">{label}</label>
+      <div className="flex flex-col gap-1.5 md:flex-row md:items-center md:gap-2">
+        <label className="text-sm text-palette-textMuted font-medium shrink-0 md:w-36">{label}</label>
         {editing ? (
           <div className="flex items-center gap-2 flex-1">
             <Input
@@ -390,7 +451,7 @@ function OnHandForm({
               onChange={e => setValues(v => ({ ...v, [key]: e.target.value }))}
               className="flex-1"
             />
-            <div>{unit}</div>
+            <div className="w-8 shrink-0 text-sm text-palette-textMuted">{unit}</div>
           </div>
         ) : (
           <span className="text-sm font-medium">{values[key] === '' ? '—' : `${values[key]}${unit ?? ''}`}</span>
@@ -400,7 +461,7 @@ function OnHandForm({
   }
 
   return (
-    <Card className="p-4 space-y-4">
+    <Card className="p-4 flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold flex items-center gap-2">
           <Refrigerator className="w-4 h-4" /> On-Hand
@@ -409,24 +470,29 @@ function OnHandForm({
           <Button variant="outline" size="sm" onClick={() => setEditing(true)}>Edit</Button>
         )}
       </div>
-      {field('Quantity on hand', 'quantity', ingredient.nutrition_stats?.base_unit)}
-      {field('Desired quantity', 'desired_quantity', ingredient.nutrition_stats?.base_unit)}
-      {field('Warning below', 'warning_quantity', ingredient.nutrition_stats?.base_unit)}
-      <div className="flex items-center gap-2">
-        <label htmlFor="on-hand-notes" className="w-36 text-sm shrink-0">Notes</label>
-        {editing ? (
-          <Input
-            id="on-hand-notes"
-            value={values.notes}
-            onChange={e => setValues(v => ({ ...v, notes: e.target.value }))}
-            className="flex-1"
-          />
-        ) : (
-          <span className="text-sm font-medium">{values.notes || '—'}</span>
-        )}
+      <div className="space-y-3">
+        {field('Quantity on hand', 'quantity', ingredient.nutrition_stats?.base_unit)}
+        {field('Desired quantity', 'desired_quantity', ingredient.nutrition_stats?.base_unit)}
+        {field('Warning below', 'warning_quantity', ingredient.nutrition_stats?.base_unit)}
+        <div className="flex flex-col gap-1.5 md:flex-row md:items-center md:gap-2">
+          <label htmlFor="on-hand-notes" className="text-sm text-palette-textMuted font-medium shrink-0 md:w-36">Notes</label>
+          {editing ? (
+            <div className="flex items-center gap-2 flex-1">
+              <Input
+                id="on-hand-notes"
+                value={values.notes}
+                onChange={e => setValues(v => ({ ...v, notes: e.target.value }))}
+                className="flex-1"
+              />
+              <div className="w-8 shrink-0"></div>
+            </div>
+          ) : (
+            <span className="text-sm font-medium">{values.notes || '—'}</span>
+          )}
+        </div>
       </div>
       {editing && (
-        <div className="flex gap-2 pt-1">
+        <div className="flex gap-2 pt-2">
           <Button size="sm" onClick={handleSave} disabled={isPending}>
             {isPending ? 'Saving…' : 'Save'}
           </Button>
@@ -477,23 +543,14 @@ export function IngredientPage() {
       <div className="space-y-4">
         <Breadcrumbs items={[{ label: 'Ingredients', href: '/ingredients' }]} />
         <div className="text-center py-12">
-          <p className="text-palette-taupe">Invalid ingredient</p>
+          <p className="text-palette-text">Invalid ingredient</p>
         </div>
       </div>
     );
   }
 
   if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <Breadcrumbs items={[{ label: 'Ingredients', href: '/ingredients' }]} />
-        <Skeleton className="h-8 w-48" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Skeleton className="h-48 rounded-lg" />
-          <Skeleton className="h-64 rounded-lg" />
-        </div>
-      </div>
-    );
+    return <div className="text-center py-12 text-palette-textMuted">Loading…</div>;
   }
 
   if (isError || !ingredient) {
@@ -501,7 +558,7 @@ export function IngredientPage() {
       <div className="space-y-4">
         <Breadcrumbs items={[{ label: 'Ingredients', href: '/ingredients' }]} />
         <div className="text-center py-12">
-          <p className="text-palette-taupe">Ingredient not found</p>
+          <p className="text-palette-text">Ingredient not found</p>
         </div>
       </div>
     );
@@ -512,41 +569,49 @@ export function IngredientPage() {
   const aggregatedStats = stats ? multiplyNutritionStats(stats, 1) : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fadeIn">
       <Breadcrumbs
         items={[
           { label: 'Ingredients', href: '/ingredients' },
           { label: ingredient.name },
         ]}
       />
-      <h2 className="text-2xl font-semibold text-palette-taupe">{ingredient.name}</h2>
+      <h2 className="font-brand text-2xl md:text-3xl font-semibold text-black mb-2 flex items-center gap-2 tracking-tight">
+        <Refrigerator className="h-7 w-7 text-palette-terracotta" aria-hidden />
+        {ingredient.name}
+      </h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Left column */}
-        <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 items-start">
+        <div className="flex flex-col gap-4 md:gap-6">
           <OnHandForm
             ingredient={ingredient}
             ingredientId={numericId}
             existing={ingredient.on_hand}
             onSaved={invalidateIngredient}
           />
-          <h3 className="font-semibold text-lg">Used in recipes</h3>
-          {usedInRecipes.length === 0 ? (
-            <p className="text-sm text-palette-slate">Not used in any recipes.</p>
-          ) : (
-            <div className="grid grid-cols-1 gap-4">
-              {usedInRecipes.map(recipe => (
-                <RecipeCard key={recipe.id} recipe={recipe} />
-              ))}
-            </div>
-          )}
+          <Card className="p-4">
+            <h3 className="font-semibold text-lg mb-3">Used in recipes</h3>
+            {usedInRecipes.length === 0 ? (
+              <p className="text-sm text-palette-textMuted">Not used in any recipes.</p>
+            ) : (
+              <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
+                {usedInRecipes.map(recipe => (
+                  <RecipeCard key={recipe.id} recipe={recipe} compact />
+                ))}
+              </div>
+            )}
+          </Card>
         </div>
 
-        {/* Right column */}
-        <div className="space-y-4">
-          {aggregatedStats && (
+        <div className="flex flex-col gap-4 md:gap-6">
+          {aggregatedStats ? (
             <Card className="p-4">
               <NutritionLabel nutritionStats={aggregatedStats} per_unit={unit} />
+            </Card>
+          ) : (
+            <Card className="p-4">
+              <h3 className="font-semibold text-lg mb-3">Nutrition Facts</h3>
+              <p className="text-sm text-palette-textMuted">No nutrition data available.</p>
             </Card>
           )}
           <CostForm

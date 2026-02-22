@@ -47,9 +47,23 @@ function ShoppingListContent() {
   );
 
   const [boughtSet, setBoughtSetState] = useState<Set<string>>(() => getBoughtSet(listId));
+  const [checkoutStatus, setCheckoutStatus] = useState<'idle' | 'loading' | 'success'>('idle');
+  
   useEffect(() => {
     setBoughtSetState(getBoughtSet(listId));
   }, [listId]);
+
+  const handleInstacartCheckout = useCallback(() => {
+    setCheckoutStatus('loading');
+    
+    // In a real app with partner access, we'd hit the Instacart affiliate API here mapping ingredients to products.
+    // For a hackathon demo, we'll fake the compilation time and show a magic success state.
+    setTimeout(() => {
+      setCheckoutStatus('success');
+      // Revert back to idle after a few seconds so they could click it again if they want
+      setTimeout(() => setCheckoutStatus('idle'), 3000);
+    }, 1500);
+  }, []);
 
   const toggleBought = useCallback(
     (item: ShoppingListItem, checked: boolean) => {
@@ -91,25 +105,48 @@ function ShoppingListContent() {
   }
 
   return (
-    <div>
-      <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
+    <div className="space-y-6 md:space-y-8 animate-fadeIn">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="font-brand text-2xl font-semibold text-palette-taupe mb-2 flex items-center gap-2 tracking-tight">
+          <h1 className="font-brand text-2xl md:text-3xl font-semibold text-black mb-2 flex items-center gap-2 tracking-tight">
             <ShoppingCart className="h-7 w-7 text-palette-terracotta" aria-hidden />
             Shopping List
           </h1>
-          <p className="text-palette-slate">
+          <p className="text-black">
             {isEmpty
               ? 'Add meals to your meal plan, then generate your list.'
               : 'What to buy for your planned meals. On-hand quantities have been subtracted.'}
           </p>
         </div>
-        <Button asChild variant="outline">
-          <Link to="/plan" className="flex items-center gap-2">
-            <Calendar className="w-4 h-4" />
-            Edit meal plan
-          </Link>
-        </Button>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
+          {!isEmpty && !noItemsToBuy && (
+            <Button 
+              onClick={checkoutStatus === 'idle' ? handleInstacartCheckout : undefined} 
+              disabled={checkoutStatus === 'loading'} 
+              className={`w-full sm:w-auto flex items-center justify-center gap-2 border-0 transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-lg ${
+                checkoutStatus === 'success' 
+                  ? 'bg-green-600 hover:bg-green-700 text-white' 
+                  : 'bg-[#0aad0a] hover:bg-[#088c08] text-white'
+              }`}
+            >
+              {checkoutStatus === 'loading' && (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/50 border-t-white" />
+              )}
+              {checkoutStatus === 'idle' && <ShoppingCart className="w-4 h-4" />}
+              {checkoutStatus === 'success' && <CheckCircle2 className="w-4 h-4 animate-fadeIn" />}
+              
+              {checkoutStatus === 'loading' ? 'Transferring Items...' 
+                : checkoutStatus === 'success' ? 'Sent to Instacart!' 
+                : 'Send to Instacart'}
+            </Button>
+          )}
+          <Button asChild variant="outline" className="w-full sm:w-auto">
+            <Link to="/plan" className="flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              Edit meal plan
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {isEmpty ? (

@@ -1,4 +1,5 @@
-import { createContext, useContext, cloneElement, isValidElement, type ReactNode } from 'react';
+import { createContext, useContext, cloneElement, isValidElement, useEffect, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 interface DialogContextValue {
   open: boolean;
@@ -44,41 +45,53 @@ export function DialogTrigger({
   );
 }
 
-export interface DialogContentProps {
-  className?: string;
-  children: ReactNode;
-  onClose?: () => void;
-}
-
 export function DialogContent({
   className = '',
+  overlayClassName = '',
   children,
   onClose,
-}: DialogContentProps) {
+}: {
+  className?: string;
+  overlayClassName?: string;
+  children: ReactNode;
+  onClose?: () => void;
+}) {
   const ctx = useContext(DialogContext);
+
+  useEffect(() => {
+    if (ctx?.open) {
+      const originalStyle = window.getComputedStyle(document.body).overflow;  
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalStyle;
+      };
+    }
+  }, [ctx?.open]);
+
   if (!ctx || !ctx.open) return null;
-  return (
+  return createPortal(
     <>
       <div
-        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-200"
+        className={`fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm transition-all ${overlayClassName}`}
         onClick={() => { ctx.setOpen(false); onClose?.(); }}
         aria-hidden
       />
       <div
         role="dialog"
-        className={`fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-xl border border-palette-mist/60 bg-white p-6 shadow-dialog ${className}`}
+        className={`fixed inset-x-0 bottom-0 top-auto z-[100] max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl border border-palette-border/60 bg-white p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] shadow-glass transition-all sm:inset-auto sm:left-1/2 sm:top-1/2 sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:overflow-visible sm:rounded-3xl sm:p-8 ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
         {children}
       </div>
-    </>
+    </>,
+    document.body
   );
 }
 
 export function DialogHeader({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`mb-4 ${className}`}>{children}</div>;
+  return <div className={`mb-4 sm:mb-6 ${className}`}>{children}</div>;
 }
 
-export function DialogTitle({ children }: { children: ReactNode }) {
-  return <h2 className="font-brand text-lg font-semibold text-palette-taupe">{children}</h2>;
+export function DialogTitle({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return <h2 className={`text-xl font-brand font-bold text-palette-text tracking-tight sm:text-2xl ${className}`}>{children}</h2>;
 }

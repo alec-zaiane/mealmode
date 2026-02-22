@@ -8,6 +8,12 @@ import re
 from typing import Any, Optional, cast
 from api import models as api_models
 from django.db import transaction
+from enum import Enum
+import nltk  # type: ignore
+from nltk import pos_tag, tokenize  # type: ignore
+
+nltk.download("punkt_tab")  # type: ignore
+nltk.download("averaged_perceptron_tagger_eng")  # type: ignore
 
 
 class StageOne:
@@ -199,6 +205,115 @@ class StageOne:
         )
 
 
+class IngredientMatcher:
+    def __init__(self) -> None:
+        self.cache_healthy = False
+        self.cached_ingredient_weights: dict[int, list[tuple[str, float]]] = {}
+
+    STOP_WORDS = {
+        "a",
+        "an",
+        "and",
+        "for",
+        "of",
+        "or",
+        "plus",
+        "the",
+        "to",
+        "taste",
+        "optional",
+    }
+
+    @staticmethod
+    def normalize_text(text: str) -> str:
+        tokens = re.findall(r"[a-z0-9]+", text.lower())
+        return " ".join(tokens)
+
+    @staticmethod
+    def tokenize(text: str) -> list[str]:
+        tokens = tokenize.word_tokenize(text.lower())  # type: ignore
+        return [token for token in tokens if re.match(r"[a-z0-9]+", token)]
+
+    @staticmethod
+    def tokens_without_stopwords(tokens: list[str]) -> list[str]:
+        return [token for token in tokens if token not in IngredientMatcher.STOP_WORDS]
+
+    @staticmethod
+    def weigh_tokens(tokens: list[str]) -> list[tuple[str, float]]:
+        tagged_tokens: list[tuple[str, str]] = pos_tag(tokens)  # type: ignore
+        weighted_tokens: list[tuple[str, float]] = []
+        for token, tag in tagged_tokens:
+            if tag.startswith("NN"):  # Nouns
+                weight = 1.0
+            elif tag.startswith("JJ"):  # Adjectives
+                weight = 0.8
+            elif tag.startswith("VB"):  # Verbs
+                weight = 0.5
+            else:
+                weight = 0.3  # Other parts of speech
+            weighted_tokens.append((token, weight))
+        return weighted_tokens
+
+    def score_match(
+        self, source_token_weights: list[tuple[str, float]], ingredient_id: int
+    ) -> float:
+        if ingredient_id not in self.cached_ingredient_weights:
+            return 0.0
+
+        ingredient_token_weights = self.cached_ingredient_weights[ingredient_id]
+        weighted_overlap_count = sum(
+            weight
+            for token, weight in source_token_weights
+            if any(token == ing_token for ing_token, _ in ingredient_token_weights)
+        )
+        if weighted_overlap_count == 0:
+            return 0.0
+
+        precision = weighted_overlap_count / len(ingredient_token_weights)
+        recall = weighted_overlap_count / len(source_token_weights)
+        denominator = precision + recall
+        base_f1 = (2 * precision * recall / denominator) if denominator > 0 else 0.0
+
+        score = base_f1
+        return max(0.0, min(1.0, score))
+
+    def populate_cache(self, ingredients: list[models.Ingredient]) -> None:
+        self.cached_ingredient_weights = {
+            ingredient.id: IngredientMatcher.weigh_tokens(
+                IngredientMatcher.tokens_without_stopwords(
+                    IngredientMatcher.tokenize(ingredient.name)
+                )
+            )
+            for ingredient in ingredients
+        }
+        self.cache_healthy = True
+
+    def find_best_match(
+        self,
+        source_text: str,
+        ingredients: list[models.Ingredient],
+    ) -> tuple[Optional[models.Ingredient], float]:
+        if not self.cache_healthy:
+            self.populate_cache(ingredients)
+
+        best_match: Optional[models.Ingredient] = None
+        best_score = 0.0
+
+        source_weights = IngredientMatcher.weigh_tokens(
+            IngredientMatcher.tokens_without_stopwords(
+                IngredientMatcher.tokenize(source_text)
+            )
+        )
+
+        for ingredient in ingredients:
+            score = self.score_match(source_weights, ingredient.id)
+            if score > best_score:
+                best_match = ingredient
+                best_score = score
+
+        return best_match, best_score
+
+
 class StageTwo:
     """Stage two takes the output of stage one, tries to match the ingredients to our database, and prepares a recipe draft that can be confirmed by the user before being added to the actual Recipe model"""
 
@@ -222,6 +337,47 @@ class StageTwo:
         prep_time_minutes: Optional[int]
         cook_time_minutes: Optional[int]
         description: Optional[str]
+
+    class CommonUnit(Enum):
+        GRAM = ("g", "gram", "grams")
+        KILOGRAM = ("kg", "kilogram", "kilograms")
+        MILLILITER = ("ml", "milliliter", "milliliters")
+        LITER = ("l", "liter", "liters")
+        TEASPOON = ("tsp", "teaspoon", "teaspoons")
+        TABLESPOON = ("tbsp", "tablespoon", "tablespoons")
+        CUP = ("cup", "cups")
+        PIECE = ("piece", "pieces", "pc", "pcs")
+        POUND = ("lb", "pound", "pounds")
+
+    @staticmethod
+    def convert_unit_to_kg(quantity: float, unit: StageTwo.CommonUnit) -> float:
+        """Dirty approximate conversion from various common units to kg
+        input: quantity in the given unit, and the unit (e.g., gram, liter, teaspoon, etc.)
+        output: quantity converted to kg (assuming the density of water for volume units, and completely guessing for pieces/counts)
+        """
+        match unit:
+            case StageTwo.CommonUnit.GRAM:
+                return quantity / 1000
+            case StageTwo.CommonUnit.KILOGRAM:
+                return quantity
+            case StageTwo.CommonUnit.MILLILITER:
+                return quantity / 1000  # assume density of water, quick and dirty
+            case StageTwo.CommonUnit.LITER:
+                return quantity  # assume density of water, quick and dirty
+            case StageTwo.CommonUnit.TEASPOON:
+                return quantity * 0.00492892
+            case StageTwo.CommonUnit.TABLESPOON:
+                return quantity * 0.0147868
+            case StageTwo.CommonUnit.CUP:
+                return quantity * 0.24
+            case StageTwo.CommonUnit.PIECE:
+                return (
+                    quantity * 0.1
+                )  # just a complete guess, since we have no idea, pieces are maybe 100g?
+            case StageTwo.CommonUnit.POUND:
+                return quantity * 0.453592
+            case _:
+                raise ValueError(f"Unrecognized unit: {unit}")
 
     @staticmethod
     def parse_quantity(source_text: str) -> float:
@@ -249,6 +405,33 @@ class StageTwo:
         return 0.0
 
     @staticmethod
+    def find_units_with_context(source_text: str) -> Optional[StageTwo.CommonUnit]:
+        """Finds units that fit the following criteria:
+        1) They are in the source text
+        2) The preceding text contains either a quantity or is a space (avoids matching the 'l' in 'flour' as a liter unit for example)
+        3) The following text is either a space, the end of the string, or a common punctuation mark (avoids matching the 'g' in 'egg' for example)
+        """
+        for unit in StageTwo.CommonUnit:
+            for alias in unit.value:
+                pattern = rf"(?<=\d|\s){re.escape(alias)}(?=\s|[.,;:!?()\[\]{{}}]|$)"
+                if re.search(pattern, source_text, re.IGNORECASE):
+                    return unit
+        return None
+
+    @staticmethod
+    def parse_quantity_convert_unit_to_kg(source_text: str) -> float:
+        quantity = StageTwo.parse_quantity(source_text)
+        # match any found units
+        found_unit = StageTwo.find_units_with_context(source_text)
+        if found_unit:
+            # take the first :)
+            return StageTwo.convert_unit_to_kg(quantity, found_unit)
+        else:
+            return StageTwo.convert_unit_to_kg(
+                quantity, StageTwo.CommonUnit.PIECE
+            )  # if there are no units, it's probably count
+
+    @staticmethod
     def strip_leading_quantity(source_text: str) -> str:
         text = source_text.strip()
         text = re.sub(r"^(\d+)\s+(\d+)\s*/\s*(\d+)\b\s*", "", text)
@@ -257,27 +440,29 @@ class StageTwo:
         return text.strip()
 
     @staticmethod
-    def tokenize_name(text: str) -> list[str]:
-        return text.lower().split()
+    def strip_leading_unit_alias(source_text: str) -> str:
+        aliases = sorted(
+            {
+                alias.strip().lower()
+                for unit in StageTwo.CommonUnit
+                for alias in unit.value
+                if alias.strip()
+            },
+            key=len,
+            reverse=True,
+        )
+        if not aliases:
+            return source_text.strip()
 
-    @staticmethod
-    def confidence_from_tokens(
-        candidate_tokens: list[str], ingredient_name: str
-    ) -> float:
-        ingredient_tokens = StageTwo.tokenize_name(ingredient_name)
-        if not candidate_tokens or not ingredient_tokens:
-            return 0.0
-
-        candidate_set = set(candidate_tokens)
-        ingredient_set = set(ingredient_tokens)
-        overlap_count = len(candidate_set.intersection(ingredient_set))
-        if overlap_count == 0:
-            return 0.0
-
-        precision = overlap_count / len(ingredient_set)
-        recall = overlap_count / len(candidate_set)
-        denominator = precision + recall
-        return (2 * precision * recall / denominator) if denominator > 0 else 0.0
+        alias_pattern = "|".join(re.escape(alias) for alias in aliases)
+        text = re.sub(
+            rf"^(?:{alias_pattern})\b\s*",
+            "",
+            source_text.strip(),
+            flags=re.IGNORECASE,
+        )
+        text = re.sub(r"^of\b\s*", "", text, flags=re.IGNORECASE)
+        return text.strip()
 
     @staticmethod
     def build_match(
@@ -294,10 +479,14 @@ class StageTwo:
         )
 
     @staticmethod
-    def match_ingredient(ingredient_str: str) -> StageTwo.IngredientMatch:
+    def match_ingredient(
+        ingredient_str: str, matcher: IngredientMatcher
+    ) -> StageTwo.IngredientMatch:
         source_text = ingredient_str.strip()
-        quantity = StageTwo.parse_quantity(source_text)
-        normalized_source = StageTwo.strip_leading_quantity(source_text)
+        quantity = StageTwo.parse_quantity_convert_unit_to_kg(source_text)
+        normalized_source = StageTwo.strip_leading_unit_alias(
+            StageTwo.strip_leading_quantity(source_text)
+        )
         candidate = normalized_source.lower()
         if not candidate:
             return StageTwo.build_match(None, source_text, quantity, 0.0)
@@ -317,27 +506,21 @@ class StageTwo:
                 1.0,
             )
 
-        candidate_tokens = StageTwo.tokenize_name(candidate)
+        candidate_terms = [
+            term for term in IngredientMatcher.tokenize(candidate) if term
+        ]
+        candidate_queryset = models.Ingredient.objects.all()
+        for term in candidate_terms[:4]:
+            candidate_queryset = candidate_queryset.filter(name__icontains=term)
 
-        best_match: Optional[models.Ingredient] = None
-        best_confidence = 0.0
+        candidate_ingredients = list(candidate_queryset)
+        if not candidate_ingredients:
+            candidate_ingredients = list(models.Ingredient.objects.all())
 
-        partial_matches = models.Ingredient.objects.filter(name__icontains=candidate)
-        for ingredient in partial_matches:
-            confidence = StageTwo.confidence_from_tokens(
-                candidate_tokens, ingredient.name
-            )
-            if confidence > best_confidence:
-                best_match = ingredient
-                best_confidence = confidence
-
-        for ingredient in models.Ingredient.objects.all():
-            confidence = StageTwo.confidence_from_tokens(
-                candidate_tokens, ingredient.name
-            )
-            if confidence > best_confidence:
-                best_match = ingredient
-                best_confidence = confidence
+        best_match, best_confidence = matcher.find_best_match(
+            candidate,
+            candidate_ingredients,
+        )
 
         if best_match is not None:
             return StageTwo.build_match(
@@ -353,8 +536,9 @@ class StageTwo:
     def load_recipe_stage_two(
         stage_one_result: StageOne.RecipeLoaderInitialFetch,
     ) -> RecipeLoadingStageTwoResult:
+        ingredient_matcher = IngredientMatcher()
         ingredient_matches = [
-            StageTwo.match_ingredient(ingredient_str)
+            StageTwo.match_ingredient(ingredient_str, ingredient_matcher)
             for ingredient_str in stage_one_result.ingredients
         ]
 

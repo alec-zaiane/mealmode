@@ -15,17 +15,17 @@ export function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
         return (
           <span key={i} className="flex items-center gap-1.5">
             {i > 0 && (
-              <ChevronRight className="h-4 w-4 shrink-0 text-palette-taupe" aria-hidden />
+              <ChevronRight className="h-4 w-4 shrink-0 text-palette-text" aria-hidden />
             )}
             {item.href != null ? (
               <Link
                 to={item.href}
-                className="text-palette-terracotta hover:text-palette-slate hover:underline"
+                className="text-palette-primary hover:text-palette-textMuted hover:underline"
               >
                 {item.label}
               </Link>
             ) : (
-              <span className="font-medium text-palette-taupe">{item.label}</span>
+              <span className="font-medium text-palette-text">{item.label}</span>
             )}
           </span>
         );
