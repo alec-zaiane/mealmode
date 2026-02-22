@@ -7,8 +7,3 @@ from . import models, serializers
 class ScraperViewSet(viewsets.ModelViewSet[models.Scraper]):
     queryset = models.Scraper.objects.all()
     serializer_class = serializers.ScraperSerializer
-
-
-class SourceViewSet(viewsets.ModelViewSet[models.Source]):
-    queryset = models.Source.objects.all()
-    serializer_class = serializers.SourceSerializer

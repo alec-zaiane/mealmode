@@ -580,6 +580,162 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/scrapers/:
+    get:
+      operationId: scrapers_list
+      parameters:
+      - name: limit
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - name: offset
+        required: false
+        in: query
+        description: The initial index from which to return the results.
+        schema:
+          type: integer
+      tags:
+      - scrapers
+      security:
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedScraperList'
+          description: ''
+    post:
+      operationId: scrapers_create
+      tags:
+      - scrapers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Scraper'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Scraper'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Scraper'
+      security:
+      - basicAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scraper'
+          description: ''
+  /api/scrapers/{id}/:
+    get:
+      operationId: scrapers_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this scraper.
+        required: true
+      tags:
+      - scrapers
+      security:
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scraper'
+          description: ''
+    put:
+      operationId: scrapers_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this scraper.
+        required: true
+      tags:
+      - scrapers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Scraper'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Scraper'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Scraper'
+      security:
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scraper'
+          description: ''
+    patch:
+      operationId: scrapers_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this scraper.
+        required: true
+      tags:
+      - scrapers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedScraper'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedScraper'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedScraper'
+      security:
+      - basicAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scraper'
+          description: ''
+    delete:
+      operationId: scrapers_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this scraper.
+        required: true
+      tags:
+      - scrapers
+      security:
+      - basicAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
   /api/tags/:
     get:
       operationId: tags_list
@@ -1057,6 +1213,29 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Recipe'
+    PaginatedScraperList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=400&limit=100
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?offset=200&limit=100
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Scraper'
     PaginatedTagList:
       type: object
       required:
@@ -1196,6 +1375,29 @@ components:
           items:
             type: integer
           readOnly: true
+    PatchedScraper:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        cached_source:
+          allOf:
+          - $ref: '#/components/schemas/Source'
+          readOnly: true
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/Source'
+          readOnly: true
+        cached_price:
+          type: number
+          format: double
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
     PatchedTag:
       type: object
       properties:
@@ -1205,6 +1407,16 @@ components:
         name:
           type: string
           maxLength: 50
+    QuantityUnitEnum:
+      enum:
+      - kg
+      - L
+      - pc
+      type: string
+      description: |-
+        * `kg` - Kilogram
+        * `L` - Liter
+        * `pc` - Piece / Count
     Recipe:
       type: object
       properties:
@@ -1340,6 +1552,34 @@ components:
       required:
       - description
       - step_number
+    Scraper:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        cached_source:
+          allOf:
+          - $ref: '#/components/schemas/Source'
+          readOnly: true
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/Source'
+          readOnly: true
+        cached_price:
+          type: number
+          format: double
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - cached_source
+      - id
+      - sources
+      - updated_at
     SlotEnum:
       enum:
       - breakfast
@@ -1352,6 +1592,43 @@ components:
         * `lunch` - Lunch
         * `dinner` - Dinner
         * `snack` - Snack
+    Source:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        url:
+          type: string
+          maxLength: 100
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        cached_price:
+          type: number
+          format: double
+          nullable: true
+        quantity_unit:
+          allOf:
+          - $ref: '#/components/schemas/QuantityUnitEnum'
+          description: |-
+            The base unit for the Source stats (e.g., per kg, per liter, etc.)
+
+            * `kg` - Kilogram
+            * `L` - Liter
+            * `pc` - Piece / Count
+        quantity:
+          type: number
+          format: double
+        scraper:
+          type: integer
+      required:
+      - id
+      - quantity
+      - scraper
+      - updated_at
+      - url
     Tag:
       type: object
       properties:

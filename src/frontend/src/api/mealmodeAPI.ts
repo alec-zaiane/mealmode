@@ -281,6 +281,15 @@ export interface PaginatedRecipeList {
   results: Recipe[];
 }
 
+export interface PaginatedScraperList {
+  count: number;
+  /** @nullable */
+  next?: string | null;
+  /** @nullable */
+  previous?: string | null;
+  results: Scraper[];
+}
+
 export interface PaginatedTagList {
   count: number;
   /** @nullable */
@@ -362,11 +371,35 @@ export interface PatchedRecipe {
   readonly ingredients?: readonly number[];
 }
 
+export interface PatchedScraper {
+  readonly id?: number;
+  readonly cached_source?: Source;
+  readonly sources?: readonly Source[];
+  /** @nullable */
+  cached_price?: number | null;
+  readonly updated_at?: string;
+}
+
 export interface PatchedTag {
   readonly id?: number;
   /** @maxLength 50 */
   name?: string;
 }
+
+/**
+ * * `kg` - Kilogram
+* `L` - Liter
+* `pc` - Piece / Count
+ */
+export type QuantityUnitEnum = typeof QuantityUnitEnum[keyof typeof QuantityUnitEnum];
+
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const QuantityUnitEnum = {
+  kg: 'kg',
+  L: 'L',
+  pc: 'pc',
+} as const;
 
 export interface Recipe {
   readonly id: number;
@@ -435,6 +468,15 @@ export interface RecipeStepWrite {
   description: string;
 }
 
+export interface Scraper {
+  readonly id: number;
+  readonly cached_source: Source;
+  readonly sources: readonly Source[];
+  /** @nullable */
+  cached_price?: number | null;
+  readonly updated_at: string;
+}
+
 /**
  * * `breakfast` - Breakfast
 * `lunch` - Lunch
@@ -451,6 +493,23 @@ export const SlotEnum = {
   dinner: 'dinner',
   snack: 'snack',
 } as const;
+
+export interface Source {
+  readonly id: number;
+  /** @maxLength 100 */
+  url: string;
+  readonly updated_at: string;
+  /** @nullable */
+  cached_price?: number | null;
+  /** The base unit for the Source stats (e.g., per kg, per liter, etc.)
+
+* `kg` - Kilogram
+* `L` - Liter
+* `pc` - Piece / Count */
+  quantity_unit?: QuantityUnitEnum;
+  quantity: number;
+  scraper: number;
+}
 
 export interface Tag {
   readonly id: number;
@@ -497,6 +556,17 @@ offset?: number;
 };
 
 export type RecipesListParams = {
+/**
+ * Number of results to return per page.
+ */
+limit?: number;
+/**
+ * The initial index from which to return the results.
+ */
+offset?: number;
+};
+
+export type ScrapersListParams = {
 /**
  * Number of results to return per page.
  */
@@ -1984,6 +2054,401 @@ const {mutation: mutationOptions, axios: axiosOptions} = options ?
       > => {
 
       const mutationOptions = getRecipesDestroyMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    
+export const scrapersList = (
+    params?: ScrapersListParams, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<PaginatedScraperList>> => {
+    
+    
+    return axios.default.get(
+      `http://localhost:8000/api/scrapers/`,{
+    ...options,
+        params: {...params, ...options?.params},}
+    );
+  }
+
+
+
+
+export const getScrapersListQueryKey = (params?: ScrapersListParams,) => {
+    return [
+    `http://localhost:8000/api/scrapers/`, ...(params ? [params]: [])
+    ] as const;
+    }
+
+    
+export const getScrapersListQueryOptions = <TData = Awaited<ReturnType<typeof scrapersList>>, TError = AxiosError<unknown>>(params?: ScrapersListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof scrapersList>>, TError, TData>>, axios?: AxiosRequestConfig}
+) => {
+
+const {query: queryOptions, axios: axiosOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getScrapersListQueryKey(params);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof scrapersList>>> = ({ signal }) => scrapersList(params, { signal, ...axiosOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof scrapersList>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ScrapersListQueryResult = NonNullable<Awaited<ReturnType<typeof scrapersList>>>
+export type ScrapersListQueryError = AxiosError<unknown>
+
+
+export function useScrapersList<TData = Awaited<ReturnType<typeof scrapersList>>, TError = AxiosError<unknown>>(
+ params: undefined |  ScrapersListParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof scrapersList>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof scrapersList>>,
+          TError,
+          Awaited<ReturnType<typeof scrapersList>>
+        > , 'initialData'
+      >, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useScrapersList<TData = Awaited<ReturnType<typeof scrapersList>>, TError = AxiosError<unknown>>(
+ params?: ScrapersListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof scrapersList>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof scrapersList>>,
+          TError,
+          Awaited<ReturnType<typeof scrapersList>>
+        > , 'initialData'
+      >, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useScrapersList<TData = Awaited<ReturnType<typeof scrapersList>>, TError = AxiosError<unknown>>(
+ params?: ScrapersListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof scrapersList>>, TError, TData>>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useScrapersList<TData = Awaited<ReturnType<typeof scrapersList>>, TError = AxiosError<unknown>>(
+ params?: ScrapersListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof scrapersList>>, TError, TData>>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getScrapersListQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+export const scrapersCreate = (
+    scraper: NonReadonly<Scraper>, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<Scraper>> => {
+    
+    
+    return axios.default.post(
+      `http://localhost:8000/api/scrapers/`,
+      scraper,options
+    );
+  }
+
+
+
+export const getScrapersCreateMutationOptions = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scrapersCreate>>, TError,{data: NonReadonly<Scraper>}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof scrapersCreate>>, TError,{data: NonReadonly<Scraper>}, TContext> => {
+
+const mutationKey = ['scrapersCreate'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof scrapersCreate>>, {data: NonReadonly<Scraper>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  scrapersCreate(data,axiosOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ScrapersCreateMutationResult = NonNullable<Awaited<ReturnType<typeof scrapersCreate>>>
+    export type ScrapersCreateMutationBody = NonReadonly<Scraper>
+    export type ScrapersCreateMutationError = AxiosError<unknown>
+
+    export const useScrapersCreate = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scrapersCreate>>, TError,{data: NonReadonly<Scraper>}, TContext>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof scrapersCreate>>,
+        TError,
+        {data: NonReadonly<Scraper>},
+        TContext
+      > => {
+
+      const mutationOptions = getScrapersCreateMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    
+export const scrapersRetrieve = (
+    id: number, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<Scraper>> => {
+    
+    
+    return axios.default.get(
+      `http://localhost:8000/api/scrapers/${id}/`,options
+    );
+  }
+
+
+
+
+export const getScrapersRetrieveQueryKey = (id?: number,) => {
+    return [
+    `http://localhost:8000/api/scrapers/${id}/`
+    ] as const;
+    }
+
+    
+export const getScrapersRetrieveQueryOptions = <TData = Awaited<ReturnType<typeof scrapersRetrieve>>, TError = AxiosError<unknown>>(id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof scrapersRetrieve>>, TError, TData>>, axios?: AxiosRequestConfig}
+) => {
+
+const {query: queryOptions, axios: axiosOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getScrapersRetrieveQueryKey(id);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof scrapersRetrieve>>> = ({ signal }) => scrapersRetrieve(id, { signal, ...axiosOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof scrapersRetrieve>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ScrapersRetrieveQueryResult = NonNullable<Awaited<ReturnType<typeof scrapersRetrieve>>>
+export type ScrapersRetrieveQueryError = AxiosError<unknown>
+
+
+export function useScrapersRetrieve<TData = Awaited<ReturnType<typeof scrapersRetrieve>>, TError = AxiosError<unknown>>(
+ id: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof scrapersRetrieve>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof scrapersRetrieve>>,
+          TError,
+          Awaited<ReturnType<typeof scrapersRetrieve>>
+        > , 'initialData'
+      >, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useScrapersRetrieve<TData = Awaited<ReturnType<typeof scrapersRetrieve>>, TError = AxiosError<unknown>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof scrapersRetrieve>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof scrapersRetrieve>>,
+          TError,
+          Awaited<ReturnType<typeof scrapersRetrieve>>
+        > , 'initialData'
+      >, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useScrapersRetrieve<TData = Awaited<ReturnType<typeof scrapersRetrieve>>, TError = AxiosError<unknown>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof scrapersRetrieve>>, TError, TData>>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useScrapersRetrieve<TData = Awaited<ReturnType<typeof scrapersRetrieve>>, TError = AxiosError<unknown>>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof scrapersRetrieve>>, TError, TData>>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getScrapersRetrieveQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+export const scrapersUpdate = (
+    id: number,
+    scraper: NonReadonly<Scraper>, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<Scraper>> => {
+    
+    
+    return axios.default.put(
+      `http://localhost:8000/api/scrapers/${id}/`,
+      scraper,options
+    );
+  }
+
+
+
+export const getScrapersUpdateMutationOptions = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scrapersUpdate>>, TError,{id: number;data: NonReadonly<Scraper>}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof scrapersUpdate>>, TError,{id: number;data: NonReadonly<Scraper>}, TContext> => {
+
+const mutationKey = ['scrapersUpdate'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof scrapersUpdate>>, {id: number;data: NonReadonly<Scraper>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  scrapersUpdate(id,data,axiosOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ScrapersUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof scrapersUpdate>>>
+    export type ScrapersUpdateMutationBody = NonReadonly<Scraper>
+    export type ScrapersUpdateMutationError = AxiosError<unknown>
+
+    export const useScrapersUpdate = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scrapersUpdate>>, TError,{id: number;data: NonReadonly<Scraper>}, TContext>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof scrapersUpdate>>,
+        TError,
+        {id: number;data: NonReadonly<Scraper>},
+        TContext
+      > => {
+
+      const mutationOptions = getScrapersUpdateMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    
+export const scrapersPartialUpdate = (
+    id: number,
+    patchedScraper: NonReadonly<PatchedScraper>, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<Scraper>> => {
+    
+    
+    return axios.default.patch(
+      `http://localhost:8000/api/scrapers/${id}/`,
+      patchedScraper,options
+    );
+  }
+
+
+
+export const getScrapersPartialUpdateMutationOptions = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scrapersPartialUpdate>>, TError,{id: number;data: NonReadonly<PatchedScraper>}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof scrapersPartialUpdate>>, TError,{id: number;data: NonReadonly<PatchedScraper>}, TContext> => {
+
+const mutationKey = ['scrapersPartialUpdate'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof scrapersPartialUpdate>>, {id: number;data: NonReadonly<PatchedScraper>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  scrapersPartialUpdate(id,data,axiosOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ScrapersPartialUpdateMutationResult = NonNullable<Awaited<ReturnType<typeof scrapersPartialUpdate>>>
+    export type ScrapersPartialUpdateMutationBody = NonReadonly<PatchedScraper>
+    export type ScrapersPartialUpdateMutationError = AxiosError<unknown>
+
+    export const useScrapersPartialUpdate = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scrapersPartialUpdate>>, TError,{id: number;data: NonReadonly<PatchedScraper>}, TContext>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof scrapersPartialUpdate>>,
+        TError,
+        {id: number;data: NonReadonly<PatchedScraper>},
+        TContext
+      > => {
+
+      const mutationOptions = getScrapersPartialUpdateMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    
+export const scrapersDestroy = (
+    id: number, options?: AxiosRequestConfig
+ ): Promise<AxiosResponse<void>> => {
+    
+    
+    return axios.default.delete(
+      `http://localhost:8000/api/scrapers/${id}/`,options
+    );
+  }
+
+
+
+export const getScrapersDestroyMutationOptions = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scrapersDestroy>>, TError,{id: number}, TContext>, axios?: AxiosRequestConfig}
+): UseMutationOptions<Awaited<ReturnType<typeof scrapersDestroy>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['scrapersDestroy'];
+const {mutation: mutationOptions, axios: axiosOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, axios: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof scrapersDestroy>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  scrapersDestroy(id,axiosOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ScrapersDestroyMutationResult = NonNullable<Awaited<ReturnType<typeof scrapersDestroy>>>
+    
+    export type ScrapersDestroyMutationError = AxiosError<unknown>
+
+    export const useScrapersDestroy = <TError = AxiosError<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof scrapersDestroy>>, TError,{id: number}, TContext>, axios?: AxiosRequestConfig}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof scrapersDestroy>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+
+      const mutationOptions = getScrapersDestroyMutationOptions(options);
 
       return useMutation(mutationOptions, queryClient);
     }
