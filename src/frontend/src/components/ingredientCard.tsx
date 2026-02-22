@@ -5,6 +5,9 @@ import { DollarSign, Flame, AlertCircle, ChevronRight, PackageOpen } from "lucid
 export function IngredientCard({ ingredient }: { ingredient: Ingredient }) {
     const navigate = useNavigate();
     const unit = ingredient.nutrition_stats?.base_unit ?? "unit";
+    const estimatedCost = typeof ingredient.estimated_cost === "number" ? ingredient.estimated_cost : null;
+    const scrapedCost = typeof ingredient.scraper?.cached_price === "number" ? ingredient.scraper.cached_price : null;
+    const displayCost = scrapedCost ?? estimatedCost;
 
     return (
         <div
@@ -31,20 +34,20 @@ export function IngredientCard({ ingredient }: { ingredient: Ingredient }) {
                         </span>
                     )}
                 </div>
-                
+
                 <div className="flex flex-wrap items-center gap-3 text-sm font-semibold text-palette-textMuted">
-                    {ingredient.estimated_cost != null ? (
-                        <span className="flex items-center gap-1.5 bg-palette-amber/10 text-palette-amber px-3 py-1.5 rounded-xl border border-palette-amber/20">
-                            <DollarSign className="w-4 h-4" />
-                            {ingredient.estimated_cost.toFixed(2)} / {unit}
-                        </span>
-                    ) : (
+                    {displayCost === null ? (
                         <span className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-xl border border-palette-border text-palette-textMuted opacity-80">
                             <DollarSign className="w-4 h-4" />
                             No price data
                         </span>
+                    ) : (
+                        <span className="flex items-center gap-1.5 bg-palette-amber/10 text-palette-amber px-3 py-1.5 rounded-xl border border-palette-amber/20">
+                            <DollarSign className="w-4 h-4" />
+                            {displayCost.toFixed(2)} / {unit}
+                        </span>
                     )}
-                    
+
                     {ingredient.nutrition_stats ? (
                         <span className="flex items-center gap-1.5 bg-palette-emerald/10 text-palette-emerald px-3 py-1.5 rounded-xl border border-palette-emerald/20">
                             <Flame className="w-4 h-4" />
@@ -75,7 +78,7 @@ export function IngredientCard({ ingredient }: { ingredient: Ingredient }) {
                 ) : (
                     <span className="text-sm font-bold text-palette-textMuted opacity-50 px-4 py-2 border border-transparent">Not in pantry</span>
                 )}
-                
+
                 <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-palette-primary group-hover:shadow-md transition-all duration-300 shrink-0 border border-palette-border group-hover:border-palette-primary">
                     <ChevronRight className="w-5 h-5 text-palette-textMuted group-hover:text-white transition-colors" />
                 </div>

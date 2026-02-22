@@ -13,9 +13,13 @@ def from_url(url: str) -> ScrapingReturn:
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
         return (None, "Invalid URL format. URL must start with http:// or https://")
-    if "realcanadiansuperstore" in url.split("."):
-        code = url.split("/")[-1].split("?")[0]
-        return from_superstore(code)
+    try:
+        if "realcanadiansuperstore" in url.split("."):
+            code = url.split("/")[-1].split("?")[0]
+            return from_superstore(code)
+    except Exception as exc:
+        print(f"Error scraping {url}: {exc}")
+
     return try_schema_org_product(url)
 
 
