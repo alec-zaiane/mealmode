@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class Scraper(models.Model):
-    cached_url: models.ForeignKey["Optional[Source]", "Optional[Source]"] = (
+    cached_source: models.ForeignKey["Optional[Source]", "Optional[Source]"] = (
         models.ForeignKey(
             "Source", on_delete=models.SET_NULL, null=True, related_name="best_for"
         )
@@ -37,12 +37,12 @@ class Scraper(models.Model):
 
     @property
     def min_url(self) -> Optional[str]:
-        if self.cached_url and datetime.now(
+        if self.cached_source and datetime.now(
             timezone.utc
         ) - self.updated_at <= timedelta(hours=1):
-            return self.cached_url.url
+            return self.cached_source.url
         self.update()
-        return self.cached_url.url if self.cached_url else None
+        return self.cached_source.url if self.cached_source else None
 
     def update(self):
         min_source, min_price = None, None
@@ -52,7 +52,7 @@ class Scraper(models.Model):
             ):
                 min_source = src
                 min_price = src.min_price_per_unit
-        self.cached_url = min_source
+        self.cached_source = min_source
         self.cached_price = min_price
         return min_price
 
