@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRecipesRetrieve, useRecipesPartialUpdate, useIngredientsList, getRecipesRetrieveQueryKey, getRecipesListQueryKey, useTagsList, getTagsListQueryKey, useTagsCreate, useTagsDestroy } from '../api/mealmodeAPI';
 import type { Recipe, RecipeIngredient, Tag, Ingredient } from '../api/mealmodeAPI';
-import { Users, DollarSign, Pencil, Plus, X, ChevronDown, Trash2 } from 'lucide-react';
+import { Users, DollarSign, Pencil, Plus, X, ChevronDown, Trash2, ChefHat } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
@@ -377,12 +377,15 @@ export function MealDetailPage() {
             { label: recipe.name },
           ]}
         />
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
-            <h2 className="text-3xl font-semibold text-palette-text mb-2">{recipe.name}</h2>
+            <h2 className="font-brand text-2xl md:text-3xl font-semibold text-palette-taupe mb-2 flex items-center gap-2 tracking-tight">
+              <ChefHat className="h-7 w-7 text-palette-terracotta" aria-hidden />
+              {recipe.name}
+            </h2>
           </div>
-          <div className="text-right flex flex-col items-end gap-2">
-            <Button onClick={openEditDialog}>
+          <div className="flex w-full flex-col gap-2 text-left md:w-auto md:items-end md:text-right">
+            <Button onClick={openEditDialog} className="w-full md:w-auto">
               <Pencil className="w-4 h-4 mr-2" />
               Edit meal
             </Button>
@@ -533,11 +536,11 @@ export function MealDetailPage() {
               {updateRecipe.isError && (
                 <p className="text-sm text-red-600">Failed to save changes. Try again.</p>
               )}
-              <div className="flex gap-2 justify-end">
-                <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
+              <div className="flex flex-col-reverse gap-2 md:flex-row md:justify-end">
+                <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)} className="w-full md:w-auto">
                   Cancel
                 </Button>
-                <Button type="submit" disabled={updateRecipe.isPending}>
+                <Button type="submit" disabled={updateRecipe.isPending} className="w-full md:w-auto">
                   {updateRecipe.isPending ? 'Saving…' : 'Save'}
                 </Button>
               </div>
@@ -556,7 +559,7 @@ export function MealDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="py-2 mb-2">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -569,7 +572,7 @@ export function MealDetailPage() {
                   type="number"
                   value={servings}
                   onChange={(e) => setServings(Math.max(1, Number(e.target.value)))}
-                  className="w-14 h-8 text-center text-sm py-1"
+                  className="h-8 w-16 text-center text-sm py-1"
                   min={0}
                 />
                 <Button
@@ -580,7 +583,7 @@ export function MealDetailPage() {
                 >
                   +
                 </Button>
-                <Button className="text-xs shrink-0 h-8" onClick={() => setServings(baseServings)}>{baseServings} (Original)</Button>
+                <Button className="h-8 text-xs shrink-0" onClick={() => setServings(baseServings)}>{baseServings} (Original)</Button>
               </div>
             </CardContent>
           </Card>
@@ -592,37 +595,56 @@ export function MealDetailPage() {
               <CardTitle>Ingredients</CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Ingredient</TableHead>
-                    <TableHead className="text-right">Quantity</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {scaledIngredients.length === 0 ? (
+              <div className="space-y-2 md:hidden">
+                {scaledIngredients.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-palette-text">No ingredients in database for this recipe.</p>
+                ) : (
+                  scaledIngredients.map((item, index) => (
+                    <button
+                      type="button"
+                      key={item.ingredient?.id ?? index}
+                      className="flex w-full items-center justify-between rounded-xl border border-palette-border px-3 py-2 text-left"
+                      onClick={() => navigate(`/ingredient/${item.ingredient?.id}`)}
+                    >
+                      <span className="font-medium text-palette-text">{item.ingredient?.name ?? '—'}</span>
+                      <span className="text-sm text-palette-textMuted">{item.quantity.toFixed(2)} {item.unit}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell className="text-palette-text text-center py-4">
-                        No ingredients in database for this recipe.
-                      </TableCell>
-                      <TableCell className="text-palette-text text-center py-4" />
+                      <TableHead>Ingredient</TableHead>
+                      <TableHead className="text-right">Quantity</TableHead>
                     </TableRow>
-                  ) : (
-                    scaledIngredients.map((item, index) => (
-                      <TableRow
-                        key={item.ingredient?.id ?? index}
-                        className="cursor-pointer hover:bg-gray-100/50"
-                        onClick={() => navigate(`/ingredient/${item.ingredient?.id}`)}
-                      >
-                        <TableCell>{item.ingredient?.name ?? '—'}</TableCell>
-                        <TableCell className="text-right">
-                          {item.quantity.toFixed(2)} {item.unit}
+                  </TableHeader>
+                  <TableBody>
+                    {scaledIngredients.length === 0 ? (
+                      <TableRow>
+                        <TableCell className="text-palette-text text-center py-4">
+                          No ingredients in database for this recipe.
                         </TableCell>
+                        <TableCell className="text-palette-text text-center py-4" />
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                    ) : (
+                      scaledIngredients.map((item, index) => (
+                        <TableRow
+                          key={item.ingredient?.id ?? index}
+                          className="cursor-pointer hover:bg-gray-100/50"
+                          onClick={() => navigate(`/ingredient/${item.ingredient?.id}`)}
+                        >
+                          <TableCell>{item.ingredient?.name ?? '—'}</TableCell>
+                          <TableCell className="text-right">
+                            {item.quantity.toFixed(2)} {item.unit}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -671,7 +693,7 @@ export function MealDetailPage() {
                     </div>
                     <div className="pt-3 border-t border-palette-border text-xs text-palette-text">
                       <div className="flex justify-between">
-                        <span>Total for {servings} servings:</span>
+                        <span>Total for {servings} serving{servings === 1 ? '' : 's'}:</span>
                         <span>{Math.round(nutritionData.nutritionPerServing.kcal_per_unit * servings)} cal</span>
                       </div>
                     </div>

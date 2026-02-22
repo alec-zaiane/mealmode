@@ -64,7 +64,7 @@ export function DialogContent({
       />
       <div
         role="dialog"
-        className={`fixed left-1/2 top-1/2 z-[100] w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-palette-border/60 bg-white p-8 shadow-glass transition-all ${className}`}
+        className={`fixed inset-x-0 bottom-0 top-auto z-[100] max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl border border-palette-border/60 bg-white p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] shadow-glass transition-all sm:inset-auto sm:left-1/2 sm:top-1/2 sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:overflow-visible sm:rounded-3xl sm:p-8 ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
         {children}
@@ -74,9 +74,9 @@ export function DialogContent({
 }
 
 export function DialogHeader({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`mb-6 ${className}`}>{children}</div>;
+  return <div className={`mb-4 sm:mb-6 ${className}`}>{children}</div>;
 }
 
 export function DialogTitle({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <h2 className={`text-2xl font-brand font-bold text-palette-text tracking-tight ${className}`}>{children}</h2>;
+  return <h2 className={`text-xl font-brand font-bold text-palette-text tracking-tight sm:text-2xl ${className}`}>{children}</h2>;
 }

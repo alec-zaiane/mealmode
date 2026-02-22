@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { calculateRecipeNutrition, calculateRecipeCost } from '../utils/calculations';
-import { Search, DollarSign, Flame, Plus, X, ChevronDown, Sparkles, Salad, BadgeDollarSign, Activity } from 'lucide-react';
+import { Search, DollarSign, Flame, Plus, X, ChevronDown, Sparkles, Salad, BadgeDollarSign, Activity, UtensilsCrossed } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { RecipeCard } from '../components/recipecard';
@@ -182,15 +182,18 @@ export function MealListPage() {
   };
 
   return (
-    <div className="space-y-8 animate-[fadeIn_0.5s_ease-out]">
+    <div className="space-y-6 sm:space-y-8 animate-[fadeIn_0.5s_ease-out]">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h2 className="text-4xl font-brand font-extrabold text-palette-text mb-1 tracking-tight">Your Recipe Library</h2>
+          <h2 className="font-brand text-2xl md:text-3xl font-semibold text-palette-taupe mb-2 flex items-center gap-2 tracking-tight">
+            <UtensilsCrossed className="h-7 w-7 text-palette-terracotta" aria-hidden />
+            Your Recipe Library
+          </h2>
           <p className="text-palette-textMuted text-sm font-medium">Discover, manage, and plan your culinary journey.</p>
         </div>
         <Dialog open={addMealOpen} onOpenChange={setAddMealOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-palette-primary hover:bg-palette-primaryDark text-white px-6 shadow-soft transition-all hover:shadow-md">
+            <Button className="w-full bg-palette-primary hover:bg-palette-primaryDark text-white px-6 shadow-soft transition-all hover:shadow-md sm:w-auto">
               <Plus className="w-4 h-4 mr-2" />
               Add Recipe
             </Button>
@@ -332,11 +335,11 @@ export function MealListPage() {
               {createRecipe.isError && (
                 <p className="text-sm text-red-600">Failed to create meal. Try again.</p>
               )}
-              <div className="flex gap-3 justify-end mt-8">
-                <Button type="button" variant="ghost" onClick={() => setAddMealOpen(false)} className="px-6 text-palette-textMuted">
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end mt-8">
+                <Button type="button" variant="ghost" onClick={() => setAddMealOpen(false)} className="w-full px-6 text-palette-textMuted sm:w-auto">
                   Cancel
                 </Button>
-                <Button type="submit" disabled={createRecipe.isPending}>
+                <Button type="submit" disabled={createRecipe.isPending} className="w-full sm:w-auto">
                   {createRecipe.isPending ? 'Creating…' : 'Create'}
                 </Button>
               </div>
@@ -346,7 +349,7 @@ export function MealListPage() {
       </div>
 
       {/* Search & Filter Container */}
-      <div className="flex flex-col gap-6 p-6 md:p-8 bg-white rounded-3xl shadow-sm border border-palette-border/60">
+      <div className="flex flex-col gap-5 p-4 sm:gap-6 sm:p-6 md:p-8 bg-white rounded-3xl shadow-sm border border-palette-border/60">
         
         {/* Helper Context (Visual Structure) */}
         <div className="flex flex-col mb-2">
@@ -356,44 +359,44 @@ export function MealListPage() {
         
         {/* Main Search */}
         <div className="relative w-full">
-          <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-[#A3A3A0]" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A3A3A0] sm:left-6 sm:h-6 sm:w-6" />
           <input
             type="text"
             placeholder="Search recipes..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-16 pr-6 bg-[#F5F4F1] border-2 border-transparent outline-none rounded-2xl h-16 text-lg font-medium placeholder:text-[#A3A3A0] text-palette-text transition-all"
+            className="w-full h-12 rounded-2xl border-2 border-transparent bg-[#F5F4F1] pl-12 pr-4 text-base font-medium text-palette-text placeholder:text-[#A3A3A0] outline-none transition-all sm:h-16 sm:pl-16 sm:pr-6 sm:text-lg"
           />
         </div>
 
         {/* Sub-Filters */}
-        <div className="flex flex-wrap gap-4 items-center">
-          <div className="flex items-center gap-2 bg-[#F5F4F1] rounded-2xl pl-5 pr-2 py-1.5 border-2 border-transparent transition-all">
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="flex w-full items-center gap-2 rounded-2xl border-2 border-transparent bg-[#F5F4F1] py-1.5 pl-4 pr-2 transition-all sm:w-auto sm:pl-5">
             <DollarSign className="w-5 h-5 text-palette-amber" />
             <input
               type="number"
               placeholder="Max cost"
               value={maxCost ?? ''}
               onChange={(e) => setMaxCost(e.target.value ? Number(e.target.value) : null)}
-              className="w-28 border-none bg-transparent h-10 focus:outline-none focus:ring-0 outline-none shadow-none px-1 text-base font-medium placeholder:text-[#A3A3A0]"
+              className="h-10 w-full border-none bg-transparent px-1 text-base font-medium placeholder:text-[#A3A3A0] shadow-none outline-none focus:outline-none focus:ring-0 sm:w-28"
               step="0.5"
             />
           </div>
-          <div className="flex items-center gap-2 bg-[#F5F4F1] rounded-2xl pl-5 pr-2 py-1.5 border-2 border-transparent transition-all">
+          <div className="flex w-full items-center gap-2 rounded-2xl border-2 border-transparent bg-[#F5F4F1] py-1.5 pl-4 pr-2 transition-all sm:w-auto sm:pl-5">
             <Flame className="w-5 h-5 text-palette-emerald" />
             <input
               type="number"
               placeholder="Max cal"
               value={maxCalories ?? ''}
               onChange={(e) => setMaxCalories(e.target.value ? Number(e.target.value) : null)}
-              className="w-28 border-none bg-transparent h-10 focus:outline-none focus:ring-0 outline-none shadow-none px-1 text-base font-medium placeholder:text-[#A3A3A0]"
+              className="h-10 w-full border-none bg-transparent px-1 text-base font-medium placeholder:text-[#A3A3A0] shadow-none outline-none focus:outline-none focus:ring-0 sm:w-28"
             />
           </div>
           {selectedTags.length > 0 && (
             <button
               type="button"
               onClick={() => setSelectedTags([])}
-              className="text-[#8A8A86] rounded-2xl h-12 px-6 text-sm font-bold bg-[#F5F4F1] focus:outline-none hover:bg-palette-border/50 transition-colors"
+              className="h-11 w-full rounded-2xl bg-[#F5F4F1] px-6 text-sm font-bold text-[#8A8A86] transition-colors hover:bg-palette-border/50 focus:outline-none sm:h-12 sm:w-auto"
             >
               Clear filters
             </button>
@@ -416,7 +419,7 @@ export function MealListPage() {
       </div>
 
       {!recipeIsError && !recipeIsLoading && filteredMeals && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <div className="rounded-2xl border border-palette-border/70 bg-white px-5 py-4 shadow-sm">
             <div className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-palette-textMuted">
               <Salad className="h-4 w-4 text-palette-primary" />
@@ -479,7 +482,7 @@ export function MealListPage() {
               </div>
             )
           }
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             {
               filteredMeals.map((recipe) => { return (<RecipeCard recipe={recipe} key={recipe.id} />) })
             }

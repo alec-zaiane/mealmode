@@ -15,63 +15,113 @@ function Layout() {
       <nav className="sticky top-0 z-50 bg-palette-background/95 backdrop-blur-sm transition-all duration-300">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex min-h-20 flex-col items-center justify-center gap-3 py-4">
+            <NavLink
+              to="/"
+              end
+              className="flex items-center gap-2 font-brand text-2xl font-bold tracking-tight text-palette-text transition-opacity hover:opacity-80"
+            >
+              <div className="rounded-lg bg-palette-primary p-2">
+                <ChefHat className="h-5 w-5 shrink-0 text-white" aria-hidden />
+              </div>
+              <span>MealMode</span>
+            </NavLink>
+
+            {/* Primary Nav */}
+            <div className="hidden w-full max-w-full items-center gap-1 overflow-x-auto rounded-full bg-white p-1 shadow-sm ring-1 ring-palette-border/80 whitespace-nowrap sm:flex sm:w-auto">
               <NavLink
                 to="/"
                 end
-                className="flex items-center gap-2 font-brand text-2xl font-bold tracking-tight text-palette-text transition-opacity hover:opacity-80"
+                className={({ isActive }) =>
+                  `flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors ${isActive ? 'bg-palette-primary text-white' : 'text-palette-textMuted hover:bg-gray-100 hover:text-palette-text'}`
+                }
               >
-                <div className="rounded-lg bg-palette-primary p-2">
-                  <ChefHat className="h-5 w-5 shrink-0 text-white" aria-hidden />
-                </div>
-                <span>MealMode</span>
+                <UtensilsCrossed className="w-4 h-4" />
+                Meals
               </NavLink>
-
-              {/* Primary Nav */}
-              <div className="flex w-full max-w-full items-center gap-1 overflow-x-auto rounded-full bg-white p-1 shadow-sm ring-1 ring-palette-border/80 whitespace-nowrap sm:w-auto">
-                <NavLink
-                  to="/"
-                  end
-                  className={({ isActive }) =>
-                    `flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors ${isActive ? 'bg-palette-primary text-white' : 'text-palette-textMuted hover:bg-gray-100 hover:text-palette-text'}`
-                  }
-                >
-                  <UtensilsCrossed className="w-4 h-4" />
-                  Meals
-                </NavLink>
-                <NavLink
-                  to="/plan"
-                  className={({ isActive }) =>
-                    `flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors ${isActive ? 'bg-palette-primary text-white' : 'text-palette-textMuted hover:bg-gray-100 hover:text-palette-text'}`
-                  }
-                >
-                  <Calendar className="w-4 h-4" />
-                  Weekly Plan
-                </NavLink>
-                <NavLink
-                  to="/ingredients"
-                  className={({ isActive }) =>
-                    `flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors ${isActive ? 'bg-palette-primary text-white' : 'text-palette-textMuted hover:bg-gray-100 hover:text-palette-text'}`
-                  }
-                >
-                  <Warehouse className="w-4 h-4" />
-                  Pantry
-                </NavLink>
-                <NavLink
-                  to="/shopping"
-                  className={({ isActive }) =>
-                    `flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors ${isActive ? 'bg-palette-primary text-white' : 'text-palette-textMuted hover:bg-gray-100 hover:text-palette-text'}`
-                  }
-                >
-                  <ShoppingCart className="w-4 h-4" />
-                  Shopping
-                </NavLink>
-              </div>
+              <NavLink
+                to="/plan"
+                className={({ isActive }) =>
+                  `flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors ${isActive ? 'bg-palette-primary text-white' : 'text-palette-textMuted hover:bg-gray-100 hover:text-palette-text'}`
+                }
+              >
+                <Calendar className="w-4 h-4" />
+                Weekly Plan
+              </NavLink>
+              <NavLink
+                to="/ingredients"
+                className={({ isActive }) =>
+                  `flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors ${isActive ? 'bg-palette-primary text-white' : 'text-palette-textMuted hover:bg-gray-100 hover:text-palette-text'}`
+                }
+              >
+                <Warehouse className="w-4 h-4" />
+                Pantry
+              </NavLink>
+              <NavLink
+                to="/shopping"
+                className={({ isActive }) =>
+                  `flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors ${isActive ? 'bg-palette-primary text-white' : 'text-palette-textMuted hover:bg-gray-100 hover:text-palette-text'}`
+                }
+              >
+                <ShoppingCart className="w-4 h-4" />
+                Shopping
+              </NavLink>
+            </div>
           </div>
         </div>
       </nav>
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-7xl px-4 py-6 pb-24 sm:px-6 sm:py-8 sm:pb-8 lg:px-8">
         <Outlet />
       </main>
+
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-palette-border/70 bg-white/95 px-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] pt-2 backdrop-blur-sm sm:hidden">
+        <div className="mx-auto flex max-w-md items-center justify-between gap-1">
+          <NavLink
+            to="/"
+            end
+            className={({ isActive }) =>
+              `flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-semibold ${
+                isActive ? 'bg-palette-primary/10 text-palette-primaryDark' : 'text-palette-textMuted'
+              }`
+            }
+          >
+            <UtensilsCrossed className="h-5 w-5" />
+            <span>Meals</span>
+          </NavLink>
+          <NavLink
+            to="/plan"
+            className={({ isActive }) =>
+              `flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-semibold ${
+                isActive ? 'bg-palette-primary/10 text-palette-primaryDark' : 'text-palette-textMuted'
+              }`
+            }
+          >
+            <Calendar className="h-5 w-5" />
+            <span>Plan</span>
+          </NavLink>
+          <NavLink
+            to="/ingredients"
+            className={({ isActive }) =>
+              `flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-semibold ${
+                isActive ? 'bg-palette-primary/10 text-palette-primaryDark' : 'text-palette-textMuted'
+              }`
+            }
+          >
+            <Warehouse className="h-5 w-5" />
+            <span>Pantry</span>
+          </NavLink>
+          <NavLink
+            to="/shopping"
+            className={({ isActive }) =>
+              `flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-semibold ${
+                isActive ? 'bg-palette-primary/10 text-palette-primaryDark' : 'text-palette-textMuted'
+              }`
+            }
+          >
+            <ShoppingCart className="h-5 w-5" />
+            <span>Shop</span>
+          </NavLink>
+        </div>
+      </div>
     </div>
   );
 }

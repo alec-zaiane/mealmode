@@ -26,5 +26,17 @@
 
   body {
     @apply bg-palette-background text-palette-text antialiased selection:bg-palette-primary/20 selection:text-palette-primaryDark;
+    overscroll-behavior-y: none;
+  }
+}
+
+@layer utilities {
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 }
