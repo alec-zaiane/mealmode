@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { useRecipesList } from '../api/mealmodeAPI';
 import type { Recipe } from '../api/mealmodeAPI';
 import { useNavigate } from 'react-router-dom';
-import { X, Plus, Search } from 'lucide-react';
+import { X, Plus, Search, CalendarDays } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import {
@@ -157,15 +157,18 @@ function MealPlanContent() {
   });
 
   return (
-    <div className="space-y-8 animate-[fadeIn_0.5s_ease-out]">
+    <div className="space-y-6 sm:space-y-8 animate-[fadeIn_0.5s_ease-out]">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h2 className="text-4xl font-brand font-extrabold text-palette-text mb-1 tracking-tight">Weekly Planner</h2>
+          <h2 className="font-brand text-2xl md:text-3xl font-semibold text-palette-taupe mb-2 flex items-center gap-2 tracking-tight">
+            <CalendarDays className="h-7 w-7 text-palette-terracotta" aria-hidden />
+            Weekly Planner
+          </h2>
           <p className="text-palette-textMuted text-sm font-medium">Select a meal from below, then tap a slot to schedule it.</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setViewAllSearchTerm(''); }}>
           <DialogTrigger asChild>
-            <Button variant="outline" className="px-6 border-palette-border hover:bg-gray-50 text-palette-text shadow-sm">
+            <Button variant="outline" className="w-full px-6 border-palette-border hover:bg-gray-50 text-palette-text shadow-sm sm:w-auto">
               <Search className="w-4 h-4 mr-2 text-palette-textMuted" />
               Find specific meal
             </Button>
@@ -212,13 +215,13 @@ function MealPlanContent() {
 
       <div className="bg-white rounded-3xl shadow-soft border border-palette-border overflow-hidden">
         {/* Quick Add Tray */}
-        <div className="bg-gray-50 border-b border-palette-border p-5">
+        <div className="bg-gray-50 border-b border-palette-border p-4 sm:p-5">
             <div className="flex items-center gap-2 mb-3">
                 <div className="w-1.5 h-4 bg-palette-primary rounded-full"></div>
                 <h3 className="text-sm font-bold text-palette-text uppercase tracking-wider">Quick Action Tray</h3>
             </div>
             
-            <div className="flex overflow-x-auto pb-4 pt-1 gap-3 snap-x hide-scrollbar mask-edges">
+            <div className="flex overflow-x-auto pb-2 pt-1 gap-3 snap-x hide-scrollbar">
                 {isLoading ? (
                     <div className="text-sm font-medium text-palette-textMuted py-2">Loading tray...</div>
                 ) : (
@@ -244,46 +247,74 @@ function MealPlanContent() {
         </div>
 
         {/* Planner Grid */}
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {planLoading ? (
             <p className="text-palette-textMuted font-medium text-center py-12">Loading your planner…</p>
           ) : (
-          <div className="overflow-x-auto pb-2">
-            <div className="min-w-[900px]">
-              <div className="grid grid-cols-8 gap-4 mb-4">
-                <div className="font-semibold text-sm text-palette-textMuted" />
+            <>
+              <div className="space-y-4 md:hidden">
                 {DAYS.map((day) => (
-                  <div key={day} className="font-bold text-sm text-palette-text capitalize text-center mb-2">
-                    {day}
+                  <div key={day} className="rounded-2xl border border-palette-border bg-palette-background/30 p-3">
+                    <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-palette-text">{day}</h3>
+                    <div className="space-y-2">
+                      {SLOTS.map((slot) => {
+                        const planEntry = enrichedPlan.find((entry) => entry.day === day && entry.slot === slot);
+                        return (
+                          <div key={`${day}-${slot}`} className="space-y-1">
+                            <p className="px-1 text-[11px] font-bold uppercase tracking-wider text-palette-textMuted">{slot}</p>
+                            <PlanSlot
+                              day={day}
+                              slot={slot}
+                              planEntry={planEntry}
+                              selectedMealId={selectedMealId}
+                              onPlace={handlePlace}
+                              onRemove={handleRemove}
+                              onViewMeal={handleViewMeal}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 ))}
               </div>
-              {SLOTS.map((slot) => (
-                <div key={slot} className="grid grid-cols-8 gap-4 mb-4">
-                  <div className="font-bold text-xs uppercase tracking-wider text-palette-textMuted flex items-center justify-end pr-4">
-                    {slot}
+              <div className="hidden overflow-x-auto pb-2 md:block">
+                <div className="min-w-[900px]">
+                  <div className="grid grid-cols-8 gap-4 mb-4">
+                    <div className="font-semibold text-sm text-palette-textMuted" />
+                    {DAYS.map((day) => (
+                      <div key={day} className="font-bold text-sm text-palette-text capitalize text-center mb-2">
+                        {day}
+                      </div>
+                    ))}
                   </div>
-                  {DAYS.map((day) => {
-                    const planEntry = enrichedPlan.find(
-                      (entry) => entry.day === day && entry.slot === slot
-                    );
-                    return (
-                      <PlanSlot
-                        key={`${day}-${slot}`}
-                        day={day}
-                        slot={slot}
-                        planEntry={planEntry}
-                        selectedMealId={selectedMealId}
-                        onPlace={handlePlace}
-                        onRemove={handleRemove}
-                        onViewMeal={handleViewMeal}
-                      />
-                    );
-                  })}
+                  {SLOTS.map((slot) => (
+                    <div key={slot} className="grid grid-cols-8 gap-4 mb-4">
+                      <div className="font-bold text-xs uppercase tracking-wider text-palette-textMuted flex items-center justify-end pr-4">
+                        {slot}
+                      </div>
+                      {DAYS.map((day) => {
+                        const planEntry = enrichedPlan.find(
+                          (entry) => entry.day === day && entry.slot === slot
+                        );
+                        return (
+                          <PlanSlot
+                            key={`${day}-${slot}`}
+                            day={day}
+                            slot={slot}
+                            planEntry={planEntry}
+                            selectedMealId={selectedMealId}
+                            onPlace={handlePlace}
+                            onRemove={handleRemove}
+                            onViewMeal={handleViewMeal}
+                          />
+                        );
+                      })}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
+            </>
           )}
         </div>
       </div>

@@ -440,8 +440,8 @@ function OnHandForm({
 
   function field(label: string, key: keyof OnHandFormValues, unit?: string) {
     return (
-      <div className="flex items-center gap-2">
-        <label className="w-36 text-sm text-palette-textMuted font-medium shrink-0">{label}</label>
+      <div className="flex flex-col gap-1.5 md:flex-row md:items-center md:gap-2">
+        <label className="text-sm text-palette-textMuted font-medium shrink-0 md:w-36">{label}</label>
         {editing ? (
           <div className="flex items-center gap-2 flex-1">
             <Input
@@ -474,8 +474,8 @@ function OnHandForm({
         {field('Quantity on hand', 'quantity', ingredient.nutrition_stats?.base_unit)}
         {field('Desired quantity', 'desired_quantity', ingredient.nutrition_stats?.base_unit)}
         {field('Warning below', 'warning_quantity', ingredient.nutrition_stats?.base_unit)}
-        <div className="flex items-center gap-2">
-          <label htmlFor="on-hand-notes" className="w-36 text-sm text-palette-textMuted font-medium shrink-0">Notes</label>
+        <div className="flex flex-col gap-1.5 md:flex-row md:items-center md:gap-2">
+          <label htmlFor="on-hand-notes" className="text-sm text-palette-textMuted font-medium shrink-0 md:w-36">Notes</label>
           {editing ? (
             <div className="flex items-center gap-2 flex-1">
               <Input
@@ -576,7 +576,10 @@ export function IngredientPage() {
           { label: ingredient.name },
         ]}
       />
-      <h2 className="text-2xl font-semibold text-palette-text">{ingredient.name}</h2>
+      <h2 className="font-brand text-2xl md:text-3xl font-semibold text-palette-taupe mb-2 flex items-center gap-2 tracking-tight">
+        <Refrigerator className="h-7 w-7 text-palette-terracotta" aria-hidden />
+        {ingredient.name}
+      </h2>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 items-start">
         <div className="flex flex-col gap-4 md:gap-6">

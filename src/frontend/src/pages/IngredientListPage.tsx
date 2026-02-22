@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useIngredientsList, useIngredientsCreate, getIngredientsListQueryKey, type Ingredient } from "../api/mealmodeAPI";
 import { Input } from "../components/ui/input";
 import { IngredientCard } from "../components/ingredientCard";
-import { Refrigerator, Search, SlidersHorizontal, Plus } from "lucide-react";
+import { Refrigerator, Search, SlidersHorizontal, Plus, Warehouse } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../components/ui/dialog";
 
@@ -53,15 +53,18 @@ export function IngredientListPage() {
         createIngredient.mutate({ data: { name } });
     };
 
-    return (<div className="space-y-8 animate-[fadeIn_0.5s_ease-out]">
+    return (<div className="space-y-6 md:space-y-8 animate-[fadeIn_0.5s_ease-out]">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
-                <h1 className="text-4xl font-brand font-extrabold text-palette-text mb-1 tracking-tight">Pantry & Cost Intelligence</h1>
+                <h1 className="font-brand text-2xl md:text-3xl font-semibold text-palette-taupe mb-2 flex items-center gap-2 tracking-tight">
+                    <Warehouse className="h-7 w-7 text-palette-terracotta" aria-hidden />
+                    Pantry & Cost Intelligence
+                </h1>
                 <p className="text-palette-textMuted text-sm font-medium">Track your ingredients, costs, and nutritional baselines.</p>
             </div>
             <Dialog open={addIngredientOpen} onOpenChange={setAddIngredientOpen}>
                 <DialogTrigger asChild>
-                    <Button className="bg-palette-primary hover:bg-palette-primaryDark text-white px-6 shadow-soft transition-all hover:shadow-md">
+                    <Button className="w-full md:w-auto bg-palette-primary hover:bg-palette-primaryDark text-white px-6 shadow-soft transition-all hover:shadow-md">
                         <Plus className="w-4 h-4 mr-2" />
                         Add Ingredient
                     </Button>
@@ -83,11 +86,11 @@ export function IngredientListPage() {
                         {createIngredient.isError && (
                             <p className="text-sm text-red-600">Failed to create ingredient. Try again.</p>
                         )}
-                        <div className="flex gap-3 justify-end mt-8">
-                            <Button type="button" variant="ghost" onClick={() => setAddIngredientOpen(false)} className="px-6 text-palette-textMuted">
+                        <div className="mt-8 flex flex-col-reverse gap-2 md:flex-row md:justify-end">
+                            <Button type="button" variant="ghost" onClick={() => setAddIngredientOpen(false)} className="w-full px-6 text-palette-textMuted md:w-auto">
                                 Cancel
                             </Button>
-                            <Button type="submit" disabled={createIngredient.isPending}>
+                            <Button type="submit" disabled={createIngredient.isPending} className="w-full md:w-auto">
                                 {createIngredient.isPending ? 'Creating…' : 'Create'}
                             </Button>
                         </div>
@@ -96,7 +99,7 @@ export function IngredientListPage() {
             </Dialog>
         </div>
 
-        <div className="flex flex-col md:flex-row gap-4 p-5 bg-white rounded-3xl shadow-soft border border-palette-border items-center">
+        <div className="flex flex-col md:flex-row gap-4 p-4 md:p-5 bg-white rounded-3xl shadow-soft border border-palette-border items-center">
             <div className="relative group flex-1 w-full">
                 <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-palette-textMuted transition-colors" />
                 <Input
@@ -107,8 +110,8 @@ export function IngredientListPage() {
                     className="pl-12 bg-gray-50 border-transparent hover:border-palette-border rounded-2xl h-12 text-base transition-all w-full"
                 />
             </div>
-            <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-                <div className="flex items-center gap-2 bg-gray-50 rounded-2xl px-4 h-12 border border-palette-border w-full sm:w-auto transition-all">
+            <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
+                <div className="flex items-center gap-2 bg-gray-50 rounded-2xl px-4 h-12 border border-palette-border w-full md:w-auto transition-all">
                     <SlidersHorizontal className="w-4 h-4 text-palette-textMuted" />
                     <label htmlFor="showN" className="text-sm font-semibold text-palette-text whitespace-nowrap">Show</label>
                     <Input
@@ -123,7 +126,7 @@ export function IngredientListPage() {
                 <Button
                     onClick={() => setOnHandOnly(v => !v)}
                     variant={onHandOnly ? "default" : "outline"}
-                    className={`w-full sm:w-auto rounded-2xl h-12 px-6 font-bold transition-all flex-shrink-0 ${onHandOnly ? "shadow-md" : "shadow-none"}`}
+                    className={`w-full md:w-auto rounded-2xl h-12 px-6 font-bold transition-all flex-shrink-0 ${onHandOnly ? "shadow-md" : "shadow-none"}`}
                 >
                     <Refrigerator size={18} className="mr-2" />
                     In Stock Only
