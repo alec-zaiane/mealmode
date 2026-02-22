@@ -21,12 +21,15 @@ import { multiplyNutritionStats } from '../utils/calculations';
 import { fetchAllPages } from '../utils/api';
 import { Card } from '../components/ui/card';
 
+type CostFormValues = {
+  estiamted_cost?: string;
+}
+
 type OnHandFormValues = {
   quantity: string;
   desired_quantity: string;
   warning_quantity: string;
   notes: string;
-  estimated_cost?: string;
 };
 
 function ingredientToFormValues(ingredient: Ingredient | null | undefined): OnHandFormValues {
@@ -35,7 +38,6 @@ function ingredientToFormValues(ingredient: Ingredient | null | undefined): OnHa
     desired_quantity: ingredient?.on_hand?.desired_quantity == null ? '' : String(ingredient.on_hand?.desired_quantity),
     warning_quantity: ingredient?.on_hand?.warning_quantity == null ? '' : String(ingredient.on_hand?.warning_quantity),
     notes: ingredient?.on_hand?.notes ?? '',
-    estimated_cost: ingredient?.estimated_cost == null ? '' : String(ingredient.estimated_cost),
   };
 }
 
@@ -76,10 +78,6 @@ function OnHandForm({
       warning_quantity: parseOpt(values.warning_quantity),
       notes: values.notes,
     };
-    patchIngredient.mutate(
-      { id: ingredientId, data: { estimated_cost: parseOpt(values.estimated_cost ?? '') } },
-      { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getRecipesListQueryKey() }); } },
-    );
     if (existing) {
       patchMutation.mutate({ id: existing.id, data: onHandPayload }, { onSuccess: () => { setEditing(false); onSaved(); } });
     } else {
@@ -119,7 +117,6 @@ function OnHandForm({
           <Button variant="outline" size="sm" onClick={() => setEditing(true)}>Edit</Button>
         )}
       </div>
-      {field('Estimated cost', 'estimated_cost', '$/' + (ingredient.nutrition_stats?.base_unit ?? 'unit'))}
       {field('Quantity on hand', 'quantity', ingredient.nutrition_stats?.base_unit)}
       {field('Desired quantity', 'desired_quantity', ingredient.nutrition_stats?.base_unit)}
       {field('Warning below', 'warning_quantity', ingredient.nutrition_stats?.base_unit)}
