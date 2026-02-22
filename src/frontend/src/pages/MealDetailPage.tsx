@@ -369,7 +369,7 @@ export function MealDetailPage() {
   }
 
   return (
-    <div>
+    <div className="animate-fadeIn">
       <div className="mb-6">
         <Breadcrumbs
           items={[
@@ -430,14 +430,16 @@ export function MealDetailPage() {
                       <li key={sel.ingredientId} className="flex items-center gap-2 text-sm">
                         <span className="flex-1 truncate text-palette-text">{sel.name}</span>
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <Input
-                            type="number"
-                            min={0}
-                            step="any"
-                            value={sel.quantity}
-                            onChange={(e) => setEditIngredientQuantity(sel.ingredientId, Number(e.target.value) || 0)}
-                            className="w-20 h-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          />
+                          <div className="w-20 shrink-0">
+                            <Input
+                              type="number"
+                              min={0}
+                              step="any"
+                              value={sel.quantity}
+                              onChange={(e) => setEditIngredientQuantity(sel.ingredientId, Number(e.target.value) || 0)}
+                              className="h-8 py-1 px-2 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                          </div>
                           <span className="text-palette-textMuted text-xs w-6">{sel.unit}</span>
                         </div>
                         <Button
@@ -568,13 +570,15 @@ export function MealDetailPage() {
                 >
                   -
                 </Button>
-                <Input
-                  type="number"
-                  value={servings}
-                  onChange={(e) => setServings(Math.max(1, Number(e.target.value)))}
-                  className="h-8 w-16 text-center text-sm py-1"
-                  min={0}
-                />
+                <div className="w-16 shrink-0">
+                  <Input
+                    type="number"
+                    value={servings}
+                    onChange={(e) => setServings(Math.max(1, Number(e.target.value)))}
+                    className="h-8 text-center text-sm py-1 px-0"
+                    min={0}
+                  />
+                </div>
                 <Button
                   variant="outline"
                   size="sm"

@@ -53,7 +53,7 @@ export function IngredientListPage() {
         createIngredient.mutate({ data: { name } });
     };
 
-    return (<div className="space-y-6 md:space-y-8 animate-[fadeIn_0.5s_ease-out]">
+    return (<div className="space-y-6 md:space-y-8 animate-fadeIn">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
                 <h1 className="font-brand text-2xl md:text-3xl font-semibold text-palette-taupe mb-2 flex items-center gap-2 tracking-tight">
@@ -114,14 +114,16 @@ export function IngredientListPage() {
                 <div className="flex items-center gap-2 bg-gray-50 rounded-2xl px-4 h-12 border border-palette-border w-full md:w-auto transition-all">
                     <SlidersHorizontal className="w-4 h-4 text-palette-textMuted" />
                     <label htmlFor="showN" className="text-sm font-semibold text-palette-text whitespace-nowrap">Show</label>
-                    <Input
-                        id="showN"
-                        type="number"
-                        min={1}
-                        value={showNIngredients}
-                        onChange={e => setShowNIngredients(Number(e.target.value))}
-                        className="w-16 h-8 border-transparent bg-transparent outline-none shadow-none p-0 text-center font-bold focus-visible:ring-0 text-palette-primary"
-                    />
+                    <div className="w-16 shrink-0">
+                        <Input
+                            id="showN"
+                            type="number"
+                            min={1}
+                            value={showNIngredients}
+                            onChange={e => setShowNIngredients(Number(e.target.value))}
+                            className="h-8 py-1 px-2 border-transparent bg-transparent outline-none shadow-none text-center font-bold focus-visible:ring-0 text-palette-primary"
+                        />
+                    </div>
                 </div>
                 <Button
                     onClick={() => setOnHandOnly(v => !v)}

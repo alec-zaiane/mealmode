@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { calculateRecipeNutrition, calculateRecipeCost } from '../utils/calculations';
-import { Search, DollarSign, Flame, Plus, X, ChevronDown, Sparkles, Salad, BadgeDollarSign, Activity, UtensilsCrossed } from 'lucide-react';
+import { Search, DollarSign, Flame, Plus, X, ChevronDown, Sparkles, Salad, BadgeDollarSign, Activity, UtensilsCrossed, Link as LinkIcon } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { RecipeCard } from '../components/recipecard';
@@ -13,7 +13,21 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../components/ui/dialog';
-import { useRecipesList, useTagsList, useRecipesCreate, useIngredientsList } from '../api/mealmodeAPI';
+import {
+  useRecipesList,
+  useTagsList,
+  useRecipesCreate,
+  useIngredientsList,
+  useConfirmableRecipesLoadRecipeCreate,
+  useConfirmableRecipesConfirmCreate,
+  useConfirmableRecipesPartialUpdate,
+  useConfirmableRecipeIngredientsCreate,
+  useConfirmableRecipeIngredientsPartialUpdate,
+  useConfirmableRecipeIngredientsDestroy,
+  useConfirmableRecipeStepsCreate,
+  useConfirmableRecipeStepsPartialUpdate,
+  useConfirmableRecipeStepsDestroy,
+} from '../api/mealmodeAPI';
 import { getRecipesListQueryKey } from '../api/mealmodeAPI';
 import type { Tag, Ingredient } from '../api/mealmodeAPI';
 
@@ -26,6 +40,29 @@ function ingredientUnitLabel(ing: Ingredient): string {
 }
 
 type SelectedIngredient = { ingredientId: number; quantity: number; name: string; unit: string };
+type ReviewIngredient = {
+  id?: number;
+  source_text: string;
+  confidence: number;
+  quantity: number;
+  best_guess_ingredient: number | null;
+  manual_name: string;
+};
+type ReviewStep = {
+  id?: number;
+  step_number: number;
+  description: string;
+};
+type ReviewDraft = {
+  id: number;
+  name: string;
+  source_url: string;
+  prep_time_minutes: number | null;
+  cook_time_minutes: number | null;
+  servings: number | null;
+  ingredients: ReviewIngredient[];
+  steps: ReviewStep[];
+};
 
 export function MealListPage() {
   const navigate = useNavigate();
@@ -38,6 +75,8 @@ export function MealListPage() {
     ...(ingredientSearch.trim() && { search: ingredientSearch.trim() }),
   });
   const ingredientsList: Ingredient[] = ingredientsResponse?.data?.results ?? [];
+  const { data: importIngredientOptionsResponse } = useIngredientsList({ limit: 500 });
+  const importIngredientOptions: Ingredient[] = importIngredientOptionsResponse?.data?.results ?? [];
   const createRecipe = useRecipesCreate({
     mutation: {
       onSuccess: (response) => {
@@ -53,12 +92,30 @@ export function MealListPage() {
   const [maxCost, setMaxCost] = useState<number | null>(null);
   const [maxCalories, setMaxCalories] = useState<number | null>(null);
   const [addMealOpen, setAddMealOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [importUrl, setImportUrl] = useState('');
+  const [importError, setImportError] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [reviewDraft, setReviewDraft] = useState<ReviewDraft | null>(null);
+  const [initialIngredientIds, setInitialIngredientIds] = useState<number[]>([]);
+  const [initialStepIds, setInitialStepIds] = useState<number[]>([]);
+  const [isFinalizingImport, setIsFinalizingImport] = useState(false);
   const [newMealName, setNewMealName] = useState('');
   const [newMealServings, setNewMealServings] = useState(1);
   const [newMealSteps, setNewMealSteps] = useState<string[]>([]);
   const [selectedIngredients, setSelectedIngredients] = useState<SelectedIngredient[]>([]);
   const [ingredientDropdownOpen, setIngredientDropdownOpen] = useState(false);
   const ingredientDropdownRef = useRef<HTMLDivElement>(null);
+  const loadRecipe = useConfirmableRecipesLoadRecipeCreate();
+  const confirmRecipe = useConfirmableRecipesConfirmCreate();
+  const patchConfirmableRecipe = useConfirmableRecipesPartialUpdate();
+  const createConfirmableIngredient = useConfirmableRecipeIngredientsCreate();
+  const patchConfirmableIngredient = useConfirmableRecipeIngredientsPartialUpdate();
+  const deleteConfirmableIngredient = useConfirmableRecipeIngredientsDestroy();
+  const createConfirmableStep = useConfirmableRecipeStepsCreate();
+  const patchConfirmableStep = useConfirmableRecipeStepsPartialUpdate();
+  const deleteConfirmableStep = useConfirmableRecipeStepsDestroy();
 
   useEffect(() => {
     if (!ingredientDropdownOpen) return;
@@ -181,8 +238,234 @@ export function MealListPage() {
     setAddMealOpen(false);
   };
 
+  const handleImportRecipe = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setImportError(null);
+    const url = importUrl.trim();
+    if (!url) {
+      setImportError('Recipe URL is required.');
+      return;
+    }
+
+    try {
+      const loadResponse = await loadRecipe.mutateAsync({ data: { url } });
+      const confirmable = loadResponse.data;
+      const draft: ReviewDraft = {
+        id: confirmable.id,
+        name: confirmable.name,
+        source_url: confirmable.source_url ?? url,
+        prep_time_minutes: confirmable.prep_time_minutes ?? null,
+        cook_time_minutes: confirmable.cook_time_minutes ?? null,
+        servings: confirmable.servings ?? 1,
+        ingredients: (confirmable.ingredients_list ?? []).map((ingredient) => ({
+          id: ingredient.id,
+          source_text: ingredient.source_text,
+          confidence: ingredient.confidence,
+          quantity: ingredient.quantity,
+          best_guess_ingredient: ingredient.best_guess_ingredient ?? null,
+          manual_name: '',
+        })),
+        steps: (confirmable.steps_list ?? []).map((step) => ({
+          id: step.id,
+          step_number: step.step_number,
+          description: step.description,
+        })),
+      };
+      setReviewDraft(draft);
+      setInitialIngredientIds(draft.ingredients.map((ingredient) => ingredient.id).filter((id): id is number => id != null));
+      setInitialStepIds(draft.steps.map((step) => step.id).filter((id): id is number => id != null));
+      setImportOpen(false);
+      setReviewOpen(true);
+    } catch (err) {
+      const eObj = err as { response?: { data?: { error?: string } } };
+      setImportError(eObj?.response?.data?.error ?? 'Failed to load recipe. Check the URL and try again.');
+    }
+  };
+
+  const updateReviewDraft = (updater: (draft: ReviewDraft) => ReviewDraft) => {
+    setReviewDraft((prev) => (prev ? updater(prev) : prev));
+  };
+
+  const updateReviewIngredient = (index: number, update: Partial<ReviewIngredient>) => {
+    updateReviewDraft((draft) => ({
+      ...draft,
+      ingredients: draft.ingredients.map((ingredient, ingredientIndex) =>
+        ingredientIndex === index ? { ...ingredient, ...update } : ingredient
+      ),
+    }));
+  };
+
+  const removeReviewIngredient = (index: number) => {
+    updateReviewDraft((draft) => ({
+      ...draft,
+      ingredients: draft.ingredients.filter((_, ingredientIndex) => ingredientIndex !== index),
+    }));
+  };
+
+  const addReviewIngredient = () => {
+    updateReviewDraft((draft) => ({
+      ...draft,
+      ingredients: [
+        ...draft.ingredients,
+        {
+          source_text: '',
+          quantity: 0,
+          confidence: 0,
+          best_guess_ingredient: null,
+          manual_name: '',
+        },
+      ],
+    }));
+  };
+
+  const updateReviewStep = (index: number, description: string) => {
+    updateReviewDraft((draft) => ({
+      ...draft,
+      steps: draft.steps.map((step, stepIndex) =>
+        stepIndex === index ? { ...step, description } : step
+      ),
+    }));
+  };
+
+  const addReviewStep = () => {
+    updateReviewDraft((draft) => ({
+      ...draft,
+      steps: [
+        ...draft.steps,
+        {
+          step_number: draft.steps.length + 1,
+          description: '',
+        },
+      ],
+    }));
+  };
+
+  const removeReviewStep = (index: number) => {
+    updateReviewDraft((draft) => ({
+      ...draft,
+      steps: draft.steps
+        .filter((_, stepIndex) => stepIndex !== index)
+        .map((step, stepIndex) => ({ ...step, step_number: stepIndex + 1 })),
+    }));
+  };
+
+  const handleFinalizeImport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setReviewError(null);
+    if (!reviewDraft) return;
+
+    const normalizedSteps = reviewDraft.steps.map((step, index) => ({
+      ...step,
+      step_number: index + 1,
+    }));
+
+    const currentIngredientIds = new Set(
+      reviewDraft.ingredients.map((ingredient) => ingredient.id).filter((id): id is number => id != null)
+    );
+    const currentStepIds = new Set(
+      normalizedSteps.map((step) => step.id).filter((id): id is number => id != null)
+    );
+
+    setIsFinalizingImport(true);
+    try {
+      await patchConfirmableRecipe.mutateAsync({
+        id: reviewDraft.id,
+        data: {
+          name: reviewDraft.name.trim(),
+          source_url: reviewDraft.source_url.trim(),
+          prep_time_minutes: reviewDraft.prep_time_minutes,
+          cook_time_minutes: reviewDraft.cook_time_minutes,
+          servings: reviewDraft.servings,
+        },
+      });
+
+      for (const ingredientId of initialIngredientIds) {
+        if (!currentIngredientIds.has(ingredientId)) {
+          await deleteConfirmableIngredient.mutateAsync({ id: ingredientId });
+        }
+      }
+
+      for (const ingredient of reviewDraft.ingredients) {
+        let bestGuessIngredient = ingredient.best_guess_ingredient;
+        if (bestGuessIngredient == null) {
+          const manual = ingredient.manual_name.trim();
+          if (!manual) {
+            throw new Error('Each unmatched ingredient needs a typed ingredient name.');
+          }
+          const matchedOption = importIngredientOptions.find(
+            (option) => option.name.trim().toLowerCase() === manual.toLowerCase()
+          );
+          if (!matchedOption) {
+            throw new Error(`No ingredient named "${manual}" exists. Type an existing ingredient name exactly.`);
+          }
+          bestGuessIngredient = matchedOption.id;
+        }
+
+        const payload = {
+          source_text: ingredient.source_text.trim(),
+          quantity: ingredient.quantity,
+          confidence: ingredient.confidence,
+          best_guess_ingredient: bestGuessIngredient,
+          confirmable_recipe: reviewDraft.id,
+        };
+        if (ingredient.id != null) {
+          await patchConfirmableIngredient.mutateAsync({
+            id: ingredient.id,
+            data: payload,
+          });
+        } else {
+          await createConfirmableIngredient.mutateAsync({
+            data: payload,
+          });
+        }
+      }
+
+      for (const stepId of initialStepIds) {
+        if (!currentStepIds.has(stepId)) {
+          await deleteConfirmableStep.mutateAsync({ id: stepId });
+        }
+      }
+
+      for (const step of normalizedSteps) {
+        const payload = {
+          step_number: step.step_number,
+          description: step.description.trim(),
+          confirmable_recipe: reviewDraft.id,
+        };
+        if (step.id != null) {
+          await patchConfirmableStep.mutateAsync({
+            id: step.id,
+            data: payload,
+          });
+        } else {
+          await createConfirmableStep.mutateAsync({
+            data: payload,
+          });
+        }
+      }
+
+      const confirmResponse = await confirmRecipe.mutateAsync({
+        id: reviewDraft.id,
+        data: {} as never,
+      });
+      const recipeId = confirmResponse.data.recipe_id;
+      queryClient.invalidateQueries({ queryKey: getRecipesListQueryKey() });
+      setImportUrl('');
+      setReviewOpen(false);
+      setReviewDraft(null);
+      setInitialIngredientIds([]);
+      setInitialStepIds([]);
+      if (recipeId != null) navigate(`/meal/${recipeId}`);
+    } catch (err) {
+      const eObj = err as { response?: { data?: { error?: string } } };
+      setReviewError(eObj?.response?.data?.error ?? 'Failed to finalize import. Review fields and try again.');
+    } finally {
+      setIsFinalizingImport(false);
+    }
+  };
+
   return (
-    <div className="space-y-6 sm:space-y-8 animate-[fadeIn_0.5s_ease-out]">
+    <div className="space-y-6 sm:space-y-8 animate-fadeIn">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h2 className="font-brand text-2xl md:text-3xl font-semibold text-palette-taupe mb-2 flex items-center gap-2 tracking-tight">
@@ -191,14 +474,306 @@ export function MealListPage() {
           </h2>
           <p className="text-palette-textMuted text-sm font-medium">Discover, manage, and plan your culinary journey.</p>
         </div>
-        <Dialog open={addMealOpen} onOpenChange={setAddMealOpen}>
-          <DialogTrigger asChild>
-            <Button className="w-full bg-palette-primary hover:bg-palette-primaryDark text-white px-6 shadow-soft transition-all hover:shadow-md sm:w-auto">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Recipe
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <Dialog
+            open={importOpen}
+            onOpenChange={(open) => {
+              setImportOpen(open);
+              if (!open) setImportError(null);
+            }}
+          >
+            <DialogTrigger asChild>
+              <Button variant="outline" className="w-full border-palette-primary text-palette-primary hover:bg-palette-primary/5 sm:w-auto">
+                <LinkIcon className="w-4 h-4 mr-2" />
+                Import Recipe
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md" overlayClassName="bg-slate-500/65 backdrop-blur-[1px]">
+              <DialogHeader>
+                <DialogTitle>Import recipe by URL</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleImportRecipe} className="space-y-4 mt-2">
+                <div>
+                  <label className="block text-sm font-bold text-palette-text mb-2">Recipe URL</label>
+                  <Input
+                    type="url"
+                    value={importUrl}
+                    onChange={(e) => setImportUrl(e.target.value)}
+                    placeholder="https://www.allrecipes.com/recipe/..."
+                    required
+                  />
+                  <p className="text-xs text-palette-textMuted mt-2">
+                    We&apos;ll load a preview first, then you can edit everything before confirming import.
+                  </p>
+                </div>
+                {importError && (
+                  <p className="text-sm text-red-600">{importError}</p>
+                )}
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end mt-8">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      setImportOpen(false);
+                      setImportError(null);
+                    }}
+                    className="w-full px-6 text-palette-textMuted sm:w-auto"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={loadRecipe.isPending}
+                    className="w-full sm:w-auto"
+                  >
+                    {loadRecipe.isPending ? 'Loading preview…' : 'Preview'}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+          <Dialog
+            open={reviewOpen}
+            onOpenChange={(open) => {
+              setReviewOpen(open);
+              if (!open) setReviewError(null);
+            }}
+          >
+            <DialogContent className="sm:w-[min(96vw,1200px)] sm:max-w-[1200px]" overlayClassName="bg-slate-500/65 backdrop-blur-[1px]">
+              <DialogHeader>
+                <DialogTitle>Review imported recipe</DialogTitle>
+              </DialogHeader>
+              {reviewDraft && (
+                <form onSubmit={handleFinalizeImport} className="space-y-5 mt-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="sm:col-span-2">
+                      <label className="block text-sm font-bold text-palette-text mb-2">Recipe Name</label>
+                      <Input
+                        value={reviewDraft.name}
+                        onChange={(e) => updateReviewDraft((draft) => ({ ...draft, name: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-sm font-bold text-palette-text mb-2">Source URL</label>
+                      <Input
+                        type="url"
+                        value={reviewDraft.source_url}
+                        onChange={(e) => updateReviewDraft((draft) => ({ ...draft, source_url: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-palette-text mb-2">Servings</label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={reviewDraft.servings ?? ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          updateReviewDraft((draft) => ({
+                            ...draft,
+                            servings: value === '' ? null : Number(value),
+                          }));
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-palette-text mb-2">Prep Time (min)</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={reviewDraft.prep_time_minutes ?? ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          updateReviewDraft((draft) => ({
+                            ...draft,
+                            prep_time_minutes: value === '' ? null : Number(value),
+                          }));
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-palette-text mb-2">Cook Time (min)</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={reviewDraft.cook_time_minutes ?? ''}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          updateReviewDraft((draft) => ({
+                            ...draft,
+                            cook_time_minutes: value === '' ? null : Number(value),
+                          }));
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-bold text-palette-text">Ingredients</label>
+                      <Button type="button" variant="outline" onClick={addReviewIngredient}>
+                        <Plus className="w-4 h-4 mr-1" />
+                        Add ingredient
+                      </Button>
+                    </div>
+                    <div className="relative">
+                      <div className="absolute top-0 left-0 right-2 h-6 bg-gradient-to-b from-white to-transparent pointer-events-none z-10" />
+                      <div className="space-y-2 max-h-64 overflow-y-auto pr-1 pb-4 pt-2">
+                        {reviewDraft.ingredients.map((ingredient, index) => (
+                        <div key={ingredient.id ?? `new-ingredient-${index}`} className="grid grid-cols-1 sm:grid-cols-12 gap-2 rounded-xl border border-palette-border p-3 bg-[#F5F4F1]/40">
+                          <div className="sm:col-span-4">
+                            <label className="block text-xs font-semibold text-palette-textMuted mb-1">Original text</label>
+                            <Input
+                              value={ingredient.source_text}
+                              onChange={(e) => updateReviewIngredient(index, { source_text: e.target.value })}
+                              placeholder="e.g. 2 cups flour"
+                            />
+                          </div>
+                          <div className="sm:col-span-2">
+                            <label className="block text-xs font-semibold text-palette-textMuted mb-1">Quantity</label>
+                            <Input
+                              type="number"
+                              step="any"
+                              min={0}
+                              value={ingredient.quantity}
+                              onChange={(e) => updateReviewIngredient(index, { quantity: Number(e.target.value) })}
+                            />
+                          </div>
+                          <div className="sm:col-span-2">
+                            <label className="block text-xs font-semibold text-palette-textMuted mb-1">Confidence</label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min={0}
+                              max={1}
+                              value={ingredient.confidence}
+                              onChange={(e) => updateReviewIngredient(index, { confidence: Number(e.target.value) })}
+                            />
+                          </div>
+                          <div className="sm:col-span-3">
+                            <label className="block text-xs font-semibold text-palette-textMuted mb-1">
+                              {ingredient.best_guess_ingredient == null ? 'Type ingredient name' : 'Matched ingredient'}
+                            </label>
+                            {ingredient.best_guess_ingredient == null ? (
+                              <>
+                                <Input
+                                  value={ingredient.manual_name}
+                                  onChange={(e) => updateReviewIngredient(index, { manual_name: e.target.value })}
+                                  placeholder="Type existing ingredient name"
+                                  list={`ingredient-suggestions-${index}`}
+                                  required
+                                />
+                                <datalist id={`ingredient-suggestions-${index}`}>
+                                  {importIngredientOptions.map((option) => (
+                                    <option key={option.id} value={option.name} />
+                                  ))}
+                                </datalist>
+                                <p className="mt-1 text-[11px] text-palette-textMuted">
+                                  Unmatched rows must be typed manually using an existing ingredient name.
+                                </p>
+                              </>
+                            ) : (
+                              <div className="flex gap-2">
+                                <select
+                                  value={ingredient.best_guess_ingredient ?? ''}
+                                  onChange={(e) =>
+                                    updateReviewIngredient(index, {
+                                      best_guess_ingredient: e.target.value ? Number(e.target.value) : null,
+                                    })
+                                  }
+                                  className="h-11 w-full rounded-xl border border-palette-border bg-white px-3 text-sm text-palette-text"
+                                >
+                                  {importIngredientOptions.map((option) => (
+                                    <option key={option.id} value={option.id}>
+                                      {option.name}
+                                    </option>
+                                  ))}
+                                </select>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => updateReviewIngredient(index, { best_guess_ingredient: null, manual_name: '' })}
+                                  className="shrink-0"
+                                >
+                                  Unmatch
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                          <div className="sm:col-span-1 flex items-end">
+                            <Button type="button" variant="ghost" onClick={() => removeReviewIngredient(index)} className="w-full sm:w-auto">
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      </div>
+                      <div className="absolute bottom-0 left-0 right-2 h-8 bg-gradient-to-t from-white to-transparent pointer-events-none z-10" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-bold text-palette-text">Steps</label>
+                      <Button type="button" variant="outline" onClick={addReviewStep}>
+                        <Plus className="w-4 h-4 mr-1" />
+                        Add step
+                      </Button>
+                    </div>
+                    <div className="relative">
+                      <div className="absolute top-0 left-0 right-2 h-6 bg-gradient-to-b from-white to-transparent pointer-events-none z-10" />
+                      <div className="space-y-2 max-h-64 overflow-y-auto pr-1 pb-4 pt-2">
+                        {reviewDraft.steps.map((step, index) => (
+                        <div key={step.id ?? `new-step-${index}`} className="flex items-start gap-2 rounded-xl border border-palette-border p-3 bg-[#F5F4F1]/40">
+                          <span className="pt-2 w-6 text-sm font-bold text-palette-textMuted">{index + 1}.</span>
+                          <Input
+                            value={step.description}
+                            onChange={(e) => updateReviewStep(index, e.target.value)}
+                            placeholder={`Step ${index + 1}`}
+                            className="flex-1"
+                          />
+                          <Button type="button" variant="ghost" onClick={() => removeReviewStep(index)}>
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                      </div>
+                      <div className="absolute bottom-0 left-0 right-2 h-8 bg-gradient-to-t from-white to-transparent pointer-events-none z-10" />
+                    </div>
+                  </div>
+
+                  {reviewError && (
+                    <p className="text-sm text-red-600">{reviewError}</p>
+                  )}
+                  <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end mt-8">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => {
+                        setReviewOpen(false);
+                        setReviewError(null);
+                      }}
+                      className="w-full px-6 text-palette-textMuted sm:w-auto"
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={isFinalizingImport} className="w-full sm:w-auto">
+                      {isFinalizingImport ? 'Finalizing…' : 'Confirm Import'}
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </DialogContent>
+          </Dialog>
+          <Dialog open={addMealOpen} onOpenChange={setAddMealOpen}>
+            <DialogTrigger asChild>
+              <Button className="w-full bg-palette-primary hover:bg-palette-primaryDark text-white px-6 shadow-soft transition-all hover:shadow-md sm:w-auto">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Recipe
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md" overlayClassName="bg-slate-500/65 backdrop-blur-[1px]">
             <DialogHeader>
               <DialogTitle>Add meal</DialogTitle>
             </DialogHeader>
@@ -229,14 +804,16 @@ export function MealListPage() {
                       <li key={sel.ingredientId} className="flex items-center gap-2 text-sm">
                         <span className="flex-1 truncate text-palette-text">{sel.name}</span>
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <Input
-                            type="number"
-                            min={0}
-                            step="any"
-                            value={sel.quantity}
-                            onChange={(e) => setIngredientQuantity(sel.ingredientId, Number(e.target.value))}
-                            className="w-20 h-10 py-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none rounded-xl border-2 border-transparent transition-all"
-                          />
+                          <div className="w-20 shrink-0">
+                            <Input
+                              type="number"
+                              min={0}
+                              step="any"
+                              value={sel.quantity}
+                              onChange={(e) => setIngredientQuantity(sel.ingredientId, Number(e.target.value))}
+                              className="h-10 py-1 px-2 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none rounded-xl border-2 border-transparent transition-all"
+                            />
+                          </div>
                           <span className="text-palette-textMuted text-xs w-6">{sel.unit}</span>
                         </div>
                         <Button
@@ -344,8 +921,9 @@ export function MealListPage() {
                 </Button>
               </div>
             </form>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Search & Filter Container */}

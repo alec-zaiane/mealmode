@@ -54,6 +54,9 @@ class ConfirmableRecipeViewSet(viewsets.ModelViewSet[models.ConfirmableRecipe]):
                     "message": drf_serializers.CharField(
                         help_text="Success message confirming the recipe was saved"
                     ),
+                    "recipe_id": drf_serializers.IntegerField(
+                        help_text="ID of the newly created Recipe"
+                    ),
                 },
             ),
             400: inline_serializer(
@@ -76,8 +79,12 @@ class ConfirmableRecipeViewSet(viewsets.ModelViewSet[models.ConfirmableRecipe]):
         if result.error:
             return Response({"error": result.error}, status=status.HTTP_400_BAD_REQUEST)
         else:
+            assert result.recipe is not None
             return Response(
-                {"message": "Recipe confirmed and saved successfully"},
+                {
+                    "message": "Recipe confirmed and saved successfully",
+                    "recipe_id": result.recipe.id,
+                },
                 status=status.HTTP_200_OK,
             )
 
@@ -118,3 +125,23 @@ class ConfirmableRecipeViewSet(viewsets.ModelViewSet[models.ConfirmableRecipe]):
         else:
             serializer = self.get_serializer(result.confirmable_recipe)
             return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class ConfirmableRecipeIngredientViewSet(
+    viewsets.ModelViewSet[models.ConfirmableRecipeIngredient]
+):
+    queryset = models.ConfirmableRecipeIngredient.objects.select_related(
+        "best_guess_ingredient", "confirmable_recipe"
+    ).all()
+    serializer_class = serializers.ConfirmableRecipeIngredientSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["confirmable_recipe"]
+
+
+class ConfirmableRecipeStepViewSet(viewsets.ModelViewSet[models.ConfirmableRecipeStep]):
+    queryset = models.ConfirmableRecipeStep.objects.select_related(
+        "confirmable_recipe"
+    ).all()
+    serializer_class = serializers.ConfirmableRecipeStepSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["confirmable_recipe"]

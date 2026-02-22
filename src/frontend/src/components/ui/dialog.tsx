@@ -1,4 +1,5 @@
 import { createContext, useContext, cloneElement, isValidElement, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 interface DialogContextValue {
   open: boolean;
@@ -46,19 +47,21 @@ export function DialogTrigger({
 
 export function DialogContent({
   className = '',
+  overlayClassName = '',
   children,
   onClose,
 }: {
   className?: string;
+  overlayClassName?: string;
   children: ReactNode;
   onClose?: () => void;
 }) {
   const ctx = useContext(DialogContext);
   if (!ctx || !ctx.open) return null;
-  return (
+  return createPortal(
     <>
       <div
-        className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm transition-all"
+        className={`fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm transition-all ${overlayClassName}`}
         onClick={() => { ctx.setOpen(false); onClose?.(); }}
         aria-hidden
       />
@@ -69,7 +72,8 @@ export function DialogContent({
       >
         {children}
       </div>
-    </>
+    </>,
+    document.body
   );
 }
 

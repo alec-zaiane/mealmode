@@ -569,7 +569,7 @@ export function IngredientPage() {
   const aggregatedStats = stats ? multiplyNutritionStats(stats, 1) : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fadeIn">
       <Breadcrumbs
         items={[
           { label: 'Ingredients', href: '/ingredients' },

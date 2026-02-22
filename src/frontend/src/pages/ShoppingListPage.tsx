@@ -105,7 +105,7 @@ function ShoppingListContent() {
   }
 
   return (
-    <div className="space-y-6 md:space-y-8">
+    <div className="space-y-6 md:space-y-8 animate-fadeIn">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="font-brand text-2xl md:text-3xl font-semibold text-palette-taupe mb-2 flex items-center gap-2 tracking-tight">
